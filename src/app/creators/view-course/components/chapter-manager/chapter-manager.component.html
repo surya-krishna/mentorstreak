@@ -1,0 +1,105 @@
+<div class="space-y-4 p-4 border rounded-lg bg-white">
+    <h3 class="font-semibold">Chapters</h3>
+    <div *ngIf="!(course.subjects && course.subjects.length)" class="text-sm text-gray-500">No subjects available.
+        Add subjects first.</div>
+    <div class="space-y-3">
+        <div *ngFor="let s of course.subjects; let si = index" class="p-3 border rounded shadow-sm">
+            <div class="flex items-center justify-between">
+                <div class="text-sm font-medium">{{ s.name || 'Untitled Subject' }} <span class="text-xs text-gray-500">{{ s.id
+                        ? '(saved)' : '(not saved)' }}</span></div>
+                <div class="text-sm text-gray-500">Chapters: {{ (s.chapters || []).length }}</div>
+            </div>
+
+            <div class="mt-3 space-y-2">
+                <div *ngFor="let c of s.chapters; let ci = index"
+                    class="flex flex-col gap-2 p-2 border rounded bg-gray-50">
+                    <div class="flex gap-2 items-center">
+                        <input id="chapter-sub-{{si}}-{{ci}}" [(ngModel)]="c.name"
+                            (ngModelChange)="onChapterChange(si,ci)" placeholder="Chapter Title" minlength="3" maxlength="100"
+                            class="flex-1 rounded-md border border-gray-200 px-3 py-2 text-gray-900" />
+                        <span class="text-xs text-gray-500 ml-2 whitespace-nowrap">{{ (c.name?.length || 0) }}/100</span>
+
+                        <!-- Input Type Toggle -->
+                        <select [ngModel]="c.inputType" (ngModelChange)="onInputTypeChange(si, ci, $event)"
+                            class="rounded-md border border-gray-200 px-2 py-2 text-sm">
+                            <!--<option value="youtube">YouTube</option>
+                            <option value="file">File Upload</option>-->
+                            <option value="manual" selected>Manual</option>
+                        </select>
+
+                        <button (click)="removeChapter(si, ci)" title="Delete chapter" aria-label="Delete chapter"
+                            class="px-2 py-1 rounded bg-red-600 text-white">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- YouTube Input -->
+                    <div *ngIf="!c.inputType || c.inputType === 'youtube'" class="flex flex-col gap-2">
+                        <div class="p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                            <strong>Warning:</strong> Only use YouTube links if you are the owner of the video.
+                            Copyrights must be protected, or you may face consequences.
+                        </div>
+                        <input [(ngModel)]="c.Url" (ngModelChange)="onChapterChange(si,ci)" placeholder="YouTube URL" maxlength="500"
+                            class="w-full rounded-md border border-gray-200 px-3 py-2 text-gray-900" />
+                        <p class="text-xs text-gray-500 mt-1">{{ (c.Url?.length || 0) }}/500 characters</p>
+                    </div>
+
+                    <!-- File Upload Input -->
+                    <div *ngIf="c.inputType === 'file'" class="flex flex-col gap-1">
+                        <div class="flex gap-2 items-center w-full">
+                            <input type="file" (change)="onFileSelected($event, si, ci)" accept=".pdf,audio/*"
+                                class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+                        </div>
+
+                        <!-- Progress Bar -->
+                        <div *ngIf="c.uploading" class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-1">
+                            <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                                [style.width.%]="c.uploadProgress"></div>
+                        </div>
+                        <div *ngIf="c.uploading" class="text-xs text-blue-600 text-right">{{c.uploadProgress}}%</div>
+
+                        <div *ngIf="c.Url && !c.uploading"
+                            class="text-xs text-green-600 truncate max-w-xs flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7" />
+                            </svg>
+                            File uploaded: {{c.Url}}
+                        </div>
+                        <div class="text-xs text-gray-500">Accepted formats: PDF (max 25MB), Audio (max 1GB).</div>
+                    </div>
+
+                    <div *ngIf="showErrors" class="flex flex-col">
+                        <div *ngIf="!c.name || !c.name.trim()" class="text-xs text-red-600">Chapter title required</div>
+                        <div *ngIf="c.inputType !== 'manual' && (!c.Url || !c.Url.trim())" class="text-xs text-red-600">Content (YouTube URL or File) required</div>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <button (click)="createChapterForSubject(si)" class="px-3 py-1 rounded border text-xs shadow-md hover:bg-indigo-700 hover:text-white">+ Add Chapter to {{
+                        s.name || 'Subject' }}</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Step 3 action buttons -->
+    <div class="flex justify-between mt-4">
+        <div class="text-sm text-gray-500">Chapters added above.
+            <div *ngIf="showErrors && !chaptersValid()" class="text-xs text-red-600 mt-1">Each subject and chapter title are required. For YouTube and File Upload chapters, content (URL or File) is also required.</div>
+        </div>
+        <div class="flex gap-2">
+            <!-- Show "Save All" when there are unsaved changes, otherwise show "Continue" -->
+            <button class="py-2 px-4 rounded border" (click)="back.emit()">Back</button>
+            <button *ngIf="courseDirty" (click)="attemptSaveAll()"
+                class="py-2 px-6 rounded bg-indigo-600 text-white shadow hover:bg-indigo-700 transition-all duration-200 transform hover:scale-105 text-sm">Save All Chapters</button>
+            <button *ngIf="!courseDirty" class="py-2 px-6 rounded bg-indigo-600 text-white shadow hover:bg-indigo-700 transition-all duration-200 transform hover:scale-105"
+                (click)="attemptContinue()">Continue</button>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,60 @@
+<header class="fixed top-0 left-0 w-full z-50 bg-background/95 backdrop-blur-md shadow-lg border-b border-cyan/10 transition-all">
+  <nav class="max-w-7xl mx-auto flex items-center justify-between px-4 py-4 md:py-5">
+    <!-- Logo -->
+    <div class="flex items-center gap-3 flex-shrink-0">
+      <!-- <div class="w-10 h-10 bg-gradient-to-br from-cyan to-primary rounded-lg flex items-center justify-center font-bold text-white">MS</div> -->
+      <span class="text-lg sm:text-2xl font-bold bg-gradient-to-r from-primary to-cyan bg-clip-text text-transparent">MentorStreak</span>
+    </div>
+
+    <!-- Desktop Navigation -->
+    <ul *ngIf="!isCreatorLoggedIn" class="hidden lg:flex gap-1 text-white font-medium">
+      <li><a href="#home" (click)="navigateToSection('home'); $event.preventDefault()" class="px-3 py-2 rounded-lg hover:bg-surface1/50 transition duration-200">Home</a></li>
+      <li><a href="#features" (click)="navigateToSection('features'); $event.preventDefault()" class="px-3 py-2 rounded-lg hover:bg-surface1/50 transition duration-200">Features</a></li>
+      <li><a href="#why" (click)="navigateToSection('why'); $event.preventDefault()" class="px-3 py-2 rounded-lg hover:bg-surface1/50 transition duration-200">Why Us</a></li>
+      <li><a href="#testimonials" (click)="navigateToSection('testimonials'); $event.preventDefault()" class="px-3 py-2 rounded-lg hover:bg-surface1/50 transition duration-200">Testimonials</a></li>
+      <li><a routerLink="/blog" routerLinkActive="active" class="px-3 py-2 rounded-lg hover:bg-surface1/50 transition duration-200">Blog</a></li>
+      <li><a routerLink="/about" class="px-3 py-2 rounded-lg hover:bg-surface1/50 transition duration-200">About</a></li>
+    </ul>
+
+    <!-- Right Section: Creator & CTA -->
+    <div class="flex items-center gap-3 sm:gap-4">
+      <ng-container *ngIf="isCreatorLoggedIn; else guestActions">
+        <a routerLink="/creator/dashboard" class="hidden sm:block text-white/80 font-medium text-sm hover:text-primary transition duration-200">Dashboard</a>
+        <a routerLink="/creator/courses/new" class="hidden sm:block text-white/80 font-medium text-sm hover:text-primary transition duration-200">New Course</a>
+        <button (click)="logout()" class="text-white/80 font-medium text-sm hover:text-primary transition duration-200">Logout</button>
+      </ng-container>
+      <ng-template #guestActions>
+        <a routerLink="/creator/login" class="hidden sm:block text-white/80 font-medium text-sm hover:text-primary transition duration-200">For Creators</a>
+        <a *ngIf="!isCreatorLoggedIn" href="#cta" class="bg-gradient-to-r from-cyan/20 to-primary/20 hover:from-cyan/30 hover:to-primary/30 text-white font-bold py-2 px-5 rounded-full text-sm transition-all duration-300 border border-cyan/30 hidden sm:inline-block">Get Started</a>
+      </ng-template>
+    </div>
+
+    <!-- Mobile Menu Button -->
+    <button class="lg:hidden flex items-center justify-center w-10 h-10 rounded-lg hover:bg-surface1/50 transition" (click)="toggleMenu()" aria-label="Toggle menu">
+      <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    </button>
+  </nav>
+
+  <!-- Mobile Navigation Menu -->
+  <div *ngIf="menuOpen" class="lg:hidden bg-background/98 backdrop-blur-lg border-t border-cyan/10 shadow-lg animate-fade-in">
+    <div class="max-w-7xl mx-auto px-4 py-6 space-y-3">
+      <ng-container *ngIf="!isCreatorLoggedIn">
+        <a href="#home" (click)="navigateToSection('home'); closeMenu(); $event.preventDefault()" class="block px-4 py-2 rounded-lg text-white hover:bg-surface1/50 transition">Home</a>
+        <a href="#features" (click)="navigateToSection('features'); closeMenu(); $event.preventDefault()" class="block px-4 py-2 rounded-lg text-white hover:bg-surface1/50 transition">Features</a>
+        <a href="#why" (click)="navigateToSection('why'); closeMenu(); $event.preventDefault()" class="block px-4 py-2 rounded-lg text-white hover:bg-surface1/50 transition">Why Us</a>
+        <a href="#testimonials" (click)="navigateToSection('testimonials'); closeMenu(); $event.preventDefault()" class="block px-4 py-2 rounded-lg text-white hover:bg-surface1/50 transition">Testimonials</a>
+        <a routerLink="/blog" (click)="closeMenu()" class="block px-4 py-2 rounded-lg text-white hover:bg-surface1/50 transition">Blog</a>
+        <a routerLink="/about" (click)="closeMenu()" class="block px-4 py-2 rounded-lg text-white hover:bg-surface1/50 transition">About</a>
+        <a routerLink="/creator/login" (click)="closeMenu()" class="block px-4 py-2 rounded-lg text-white hover:bg-surface1/50 transition">For Creators</a>
+        <a href="#cta" (click)="closeMenu()" class="block px-4 py-2 rounded-lg bg-gradient-to-r from-cyan to-primary text-white font-semibold text-center hover:shadow-lg transition">Get Started</a>
+      </ng-container>
+      <ng-container *ngIf="isCreatorLoggedIn">
+        <a routerLink="/creator/dashboard" (click)="closeMenu()" class="block px-4 py-2 rounded-lg text-white hover:bg-surface1/50 transition">Dashboard</a>
+        <a routerLink="/creator/courses/new" (click)="closeMenu()" class="block px-4 py-2 rounded-lg text-white hover:bg-surface1/50 transition">New Course</a>
+        <button (click)="logout(); closeMenu()" class="w-full text-left px-4 py-2 rounded-lg text-white hover:bg-surface1/50 transition">Logout</button>
+      </ng-container>
+    </div>
+  </div>
+</header>

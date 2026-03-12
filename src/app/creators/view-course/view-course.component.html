@@ -1,0 +1,253 @@
+<div class="min-h-screen bg-gray-50 p-6">
+  <div class="max-w-6xl mx-auto bg-white rounded-xl shadow-md p-6 text-gray-800">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-xl font-semibold">Edit Course</h2>
+      <div class="text-sm text-gray-600">Units: {{countUnits()}} / {{maxUnits}}</div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">
+      <!-- Left Sidebar -->
+      <aside class="space-y-4 hidden lg:block min-w-[200px] max-w-[260px]">
+        <div class="p-4 border rounded-lg bg-gray-50">
+          <div class="flex items-center gap-4">
+            <div class="w-20 h-12 bg-gray-100 rounded overflow-hidden flex items-center justify-center">
+              <img *ngIf="thumbnailPreview" [src]="thumbnailPreview" alt="thumb" class="w-full h-full object-cover" />
+              <div *ngIf="!thumbnailPreview" class="text-xs text-gray-400">No Thumb</div>
+            </div>
+            <div>
+              <div class="font-semibold">{{ course.name || 'Untitled course' }}</div>
+              <div class="text-sm text-gray-500">{{ course.description ? (course.description | slice:0:80) +
+                (course.description.length>80? '...':'') : 'Add a short description' }}</div>
+            </div>
+          </div>
+        </div>
+<!-- 
+        <div class="p-4 border rounded-lg bg-white">
+          <div *ngIf="loading" class="flex items-center gap-2 text-sm text-gray-700">Loading... <svg
+              class="w-4 h-4 animate-spin" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none">
+              </circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg></div>
+          <div *ngIf="!loading && actionMessage" class="text-sm text-gray-700">{{ actionMessage }}</div>
+          <div *ngIf="!loading && !actionMessage" class="text-sm text-gray-500">Progress and server actions show here.
+          </div>
+        </div> -->
+
+        <!-- ...existing code... -->
+
+        <!-- Course Meta Data Main Section -->
+        <div class="bg-indigo-50 border border-indigo-100 rounded-lg p-4 mb-4 flex flex-wrap gap-8 items-center">
+          <div class="flex flex-col items-center">
+            <div class="text-2xl font-bold text-indigo-700">{{ subjectCount }}</div>
+            <div class="text-xs text-gray-600">Subjects</div>
+          </div>
+          <div class="flex flex-col items-center">
+            <div class="text-2xl font-bold text-indigo-700">{{ chapterCount }}</div>
+            <div class="text-xs text-gray-600">Chapters</div>
+          </div>
+          <div class="flex flex-col items-center">
+            <div class="text-2xl font-bold text-indigo-700">{{ testCount }}</div>
+            <div class="text-xs text-gray-600">Tests</div>
+          </div>
+        </div>
+
+        <!-- Preview Navigation Tree (Only visible in Step 4) -->
+        <div *ngIf="stepEquals(4)" class="p-4 border rounded-lg bg-white text-sm text-gray-600">
+          <div class="font-medium mb-2">Contents</div>
+          <div class="mb-2">
+            <div class="font-medium text-xs">{{ course.name || 'Untitled course' }}</div>
+            <div class="text-xs text-gray-500" [title]="course.description">{{ course.description ? (course.description | slice:0:20)+(course.description.length>20?"...":"") : '' }}</div>
+          </div>
+          <div *ngFor="let book of course.books; let i = index" class="mb-2">
+            <div class="flex items-center justify-between cursor-pointer" (click)="toggleBook(i)">
+              <div class="flex items-center gap-2">
+                <div class="text-xs font-medium" [title]="book.name">{{ ((book.name || 'Untitled Book') | slice:0:20)+(book.name&&book.name.length>20?"...":"") }}</div>
+                <div class="text-xs text-gray-400">{{ (book.chapters || []).length }} chapters</div>
+              </div>
+              <div class="text-indigo-600">{{ book.expanded ? '▾' : '▸' }}</div>
+            </div>
+            <ul *ngIf="book.expanded" class="mt-2 pl-4 text-sm space-y-1">
+              <li *ngFor="let chapter of book.chapters; let ci = index">
+                <button class="text-left text-indigo-700 text-sm w-full hover:underline"
+                  (click)="selectChapter(i, ci); toggleSidebar()">{{ chapter.Name || 'Untitled Chapter' }}</button>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Test List Sidebar (Only visible in Step 5) -->
+        <div *ngIf="stepEquals(5)" class="p-4 border rounded-lg bg-white text-sm text-gray-600">
+          <div class="flex items-center justify-between mb-4">
+            <div class="font-medium">Tests</div>
+            <div class="relative">
+              <!--(click)="showNewTestOptions = !showNewTestOptions"-->
+              <button (click)="createNewTest()" 
+                class="p-1 rounded hover:bg-gray-100 text-indigo-600 font-medium flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                New
+              </button>
+              <!-- Dropdown -->
+              <div *ngIf="showNewTestOptions"
+                class="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg border z-10 py-1">
+                <button (click)="openAutoGenerate()"
+                  class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Auto Generate</button>
+                <button (click)="createNewTest()"
+                  class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Create
+                  Manually</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <div *ngFor="let test of tests; let i = index"
+              class="p-3 rounded border cursor-pointer hover:border-indigo-300 transition-colors group relative"
+              [class.border-indigo-500]="selectedTestId === test.id" [class.bg-indigo-50]="selectedTestId === test.id"
+              (click)="selectTest(test.id)">
+              <div class="font-medium text-gray-900">{{ test.name || 'Untitled Test' }}</div>
+              <div class="text-xs text-gray-500 mt-1 flex items-center gap-2">
+                <span class="px-1.5 py-0.5 rounded bg-gray-100">{{ test.type }}</span>
+              </div>
+              <button (click)="$event.stopPropagation(); deleteTest(i)"
+                class="absolute top-2 right-2 p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                  </path>
+                </svg>
+              </button>
+            </div>
+            <div *ngIf="tests.length === 0" class="text-center py-8 text-gray-400 italic">
+              No tests created yet.
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <div class="space-y-4" style="min-width:0;">
+        <!-- Stepper -->
+        <div class="flex items-center gap-4 mb-2 overflow-x-auto pb-2">
+          <ng-container
+            *ngFor="let label of ['Course','Subjects','Chapters','Preview','Tests','Publish']; let idx = index">
+            <div class="flex items-center gap-3 group cursor-pointer" (click)="setStep(idx + 1)">
+              <div class="w-9 h-9 flex items-center justify-center rounded-full font-medium transition-all duration-300"
+                [ngClass]="{ 'bg-indigo-600 text-white shadow hover:bg-indigo-700 transition-all duration-200 transform hover:scale-105 shadow-md scale-110': step === (idx+1), 'bg-gray-100 text-gray-700 group-hover:bg-gray-200': step !== (idx+1) }">
+                {{ idx+1 }}</div>
+              <div class="text-sm font-medium transition-colors duration-300 whitespace-nowrap"
+                [class.text-indigo-600]="step === (idx+1)" [class.font-bold]="step === (idx+1)">{{ label }}</div>
+            </div>
+            <div *ngIf="idx < 5" class="flex-1 h-0.5 bg-gray-200 min-w-[20px]"></div>
+          </ng-container>
+        </div>
+
+
+        <!-- Step 1: Course Info -->
+        <app-course-info *ngIf="stepEquals(1)" [course]="course" [loading]="loading" [courseDirty]="courseDirty"
+          [thumbnailPreview]="thumbnailPreview" (courseChange)="onCourseChange()" (save)="saveCourse()"
+          (continue)="setStep(2)" (validityChange)="onCourseValidityChange($event)">
+        </app-course-info>
+
+
+        <!-- Step 2: Subjects -->
+        <app-subject-manager *ngIf="stepEquals(2)" [course]="course" [loading]="loading" [courseDirty]="courseDirty"
+          (courseChange)="onCourseChange()" (save)="saveSubjects()" (back)="setStep(1)" (continue)="setStep(3)"
+          (validityChange)="onSubjectsValidityChange($event)">
+        </app-subject-manager>
+
+        <!-- Step 3: Chapters -->
+        <app-chapter-manager *ngIf="stepEquals(3)" [course]="course" [loading]="loading" [courseDirty]="courseDirty"
+          (courseChange)="onCourseChange()" (save)="saveChapters()" (back)="setStep(2)" (continue)="setStep(4)"
+          (validityChange)="onChaptersValidityChange($event)" (uploadChapter)="onChapterFileUpload($event)">
+        </app-chapter-manager>
+
+        <!-- Step 4: Preview -->
+        <div *ngIf="stepEquals(4)" class="space-y-4">
+          <div class="prose max-w-none">
+            <p class="text-sm">Select a chapter from the sidebar to preview its content.</p>
+            <!-- Content preview logic with markdown editor -->
+            <div *ngIf="selectedChapter !== null" class="space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="text-sm text-gray-600">Editing: {{ selectedChapterName }}</div>
+                <div class="flex gap-2">
+                  <button
+                    class="py-2 px-4 rounded bg-indigo-600 text-white shadow hover:bg-indigo-700 transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                    (click)="saveChapterContent()" [disabled]="!hasUnsavedChanges">Save Content</button>
+                </div>
+              </div>
+
+              <app-markdown-editor 
+                [content]="editorContentMarkdown" 
+                [editorHeight]="'400px'"
+                (contentChange)="onMarkdownContentChange($event)">
+              </app-markdown-editor>
+                
+                
+            </div>
+            <div *ngIf="selectedChapter === null">
+              <p class="text-xs text-gray-500">No chapter selected. Choose one from the sidebar to preview and
+                edit.
+              </p>
+            </div>
+          </div>
+
+          <!-- <div class="text-xs text-gray-600">Units: {{countUnits()}} / {{maxUnits}}</div> -->
+        </div>
+
+        <!-- Step 5: Tests -->
+        <app-test-manager *ngIf="stepEquals(5)" [courseId]="courseId" [course]="course" [testId]="selectedTestId"
+          [action]="testAction" (saved)="onTestSaved()" (cancelled)="onTestCancelled()">
+        </app-test-manager>
+
+        <!-- Step 6: Publish -->
+        <div *ngIf="stepEquals(6)" class="space-y-4">
+          <section class="mt-8" id="publish-section">
+            <h2 class="text-xl font-semibold mb-4">Publish</h2>
+            <app-package-manager [packages]="packages" [course]="course"
+              (packagesChange)="packages = $event"></app-package-manager>
+            <div class="flex gap-2 mt-4">
+              <button class="py-2 px-4 rounded border" (click)="setStep(5)">Back</button>
+              <button *ngIf="course.status === 'active'" (click)="unpublish()"
+                class="py-2 px-6 rounded bg-yellow-600 text-white shadow hover:bg-yellow-700 transition-all duration-200 transform hover:scale-105">Unpublish</button>
+              <button *ngIf="stepEquals(6) && course.status !== 'active'" (click)="confirmPublish()"
+                class="py-2 px-6 rounded bg-indigo-600 text-white shadow hover:bg-indigo-700 transition-all duration-200 transform hover:scale-105">Publish Course</button>
+            </div>
+          </section>
+        </div>
+
+        <!-- ...existing code for main content (stepper, steps, etc.)... -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- T&C Modal -->
+<div *ngIf="showTnCModal" class="fixed inset-0 z-[70] flex items-center justify-center bg-black bg-opacity-50">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 max-h-[90vh] flex flex-col">
+    <h3 class="text-xl font-bold mb-4 text-gray-800">Terms and Conditions</h3>
+
+    <div
+      class="flex-1 overflow-y-auto border rounded p-4 bg-gray-50 mb-4 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed h-96">
+      {{ tncText }}
+    </div>
+
+    <div class="flex items-center gap-3 mb-6 p-3 bg-indigo-50 rounded border border-indigo-100">
+      <input type="checkbox" id="acceptTnC" [(ngModel)]="tncAccepted"
+        class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer">
+      <label for="acceptTnC" class="text-sm font-medium text-gray-700 cursor-pointer select-none">
+        I have read and agree to the Terms and Conditions.
+      </label>
+    </div>
+
+    <div class="flex justify-end gap-3">
+      <button (click)="showTnCModal = false"
+        class="px-4 py-2 rounded border text-gray-600 hover:bg-gray-50 font-medium">Cancel</button>
+      <button (click)="proceedToPublish()" [disabled]="!tncAccepted"
+        class="px-6 py-2 rounded bg-indigo-600 text-white shadow hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all duration-200 transform hover:scale-105">
+        Publish Course
+      </button>
+    </div>
+  </div>
+</div>

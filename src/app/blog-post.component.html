@@ -1,0 +1,16 @@
+<section class="min-h-screen bg-background py-24 px-4 flex flex-col items-center animate-fade-in">
+  <button (click)="goBack()" class="mb-8 px-4 py-2 rounded-full bg-primary text-white font-semibold shadow-3xl hover:bg-accent transition" style="z-index:15; position:relative;">← Back to Blog</button>
+  <div *ngIf="post" class="max-w-3xl w-full mx-auto bg-[#23244a] rounded-3xl shadow-4xl p-8 text-white animate-fade-in-up" style="z-index:10; position:relative;">
+    <img [src]="post.image" [alt]="post.title" class="rounded-xl mb-6 w-full h-64 object-cover shadow-3xl" />
+    <div class="flex items-center gap-2 mb-4">
+      <span class="text-xs bg-primary/30 text-primary px-3 py-1 rounded-full font-semibold">{{ post.tag }}</span>
+      <span class="text-xs text-cyan">{{ post.readTime }}</span>
+      <span class="text-xs text-gray-400">•</span>
+      <span class="text-xs text-gray-400">{{ post.date }}</span>
+    </div>
+    <h1 class="text-3xl md:text-4xl font-bold text-primary mb-4">{{ post.title }}</h1>
+    <div class="text-base md:text-lg text-gray-200 mb-6">By {{ post.author }}</div>
+    <div class="prose prose-invert max-w-none" [innerHTML]="post.content"></div>
+  </div>
+  <div *ngIf="!post" class="text-center text-lg text-gray-400 mt-24">Blog post not found.</div>
+</section>

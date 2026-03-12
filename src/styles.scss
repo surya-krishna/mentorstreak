@@ -1,0 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap');
+@import url('https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom global styles */
+
+body {
+  font-family: 'Futura', 'Inter', 'Montserrat', 'DM Sans', 'Poppins', 'Segoe UI', 'Roboto', 'Arial', sans-serif;
+  background-color: #0a0a12;
+  /* Matches theme('colors.background') */
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 400;
+  transition: all 0.3s ease-in-out;
+}
+
+/* KaTeX formula styles for markdown rendering */
+.katex {
+  font-size: 1.1em;
+  color: #1f2937;
+}
+
+.katex-display {
+  margin: 1.5em 0;
+  text-align: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.katex-display > .katex {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+/* Inline formula styling */
+.katex-inline {
+  display: inline;
+}

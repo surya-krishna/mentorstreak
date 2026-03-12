@@ -1,0 +1,324 @@
+<section id="home" class="relative min-h-screen flex flex-col justify-center items-center text-center overflow-hidden bg-transparent">
+  <!-- 3D Canvas Background - Fixed position for full viewport coverage -->
+  <canvas #threeCanvas class="three-canvas"></canvas>
+  
+  <!-- Animated gradient orbs for extra visual appeal -->
+  <!-- <div class="absolute top-20 left-10 w-72 h-72 bg-gradient-to-r from-cyan to-primary opacity-20 rounded-full blur-3xl animate-pulse"></div>
+  <div class="absolute bottom-20 right-10 w-96 h-96 bg-gradient-to-r from-primary to-accent opacity-15 rounded-full blur-3xl animate-pulse" style="animation-delay: 2s;"></div>
+   -->
+  <!-- Overlay Content -->
+  <div class="content-overlay relative z-10 flex flex-col justify-center items-center text-center p-4 sm:p-8">
+    <div class="max-w-3xl w-full mx-auto px-2 sm:px-6">
+      <!-- Animated badge -->
+      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-cyan/20 to-primary/20 border border-cyan/30 mb-6 animate-fade-in-down" style="animation-duration: 1s;">
+        <span class="w-2 h-2 bg-cyan rounded-full animate-pulse"></span>
+        <span class="text-cyan text-sm font-medium">✨ Join 50K+ Students Learning Today</span>
+      </div>
+      
+      <h1 class="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold leading-tight mb-6 text-white drop-shadow-glow animate-fade-in-up" style="animation-duration: 0.8s;">
+        Learn Smarter,<br/><span class="bg-gradient-to-r from-cyan via-primary to-accent bg-clip-text text-transparent animate-gradient">Not Harder.</span>
+      </h1>
+      
+      <p class="text-base sm:text-lg md:text-xl text-cyan-100/90 mb-8 max-w-2xl mx-auto leading-relaxed animate-fade-in-up" style="animation-duration: 0.8s; animation-delay: 0.2s;">
+        Premium courses, practice mocks, flashcards, mindmaps, and 24/7 AI assistance. Learn anything, anytime, anywhere.
+      </p>
+      
+      <!-- Enhanced CTA button with animations -->
+      <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+        <button (click)="openAppPopup(true)" class="group relative bg-gradient-to-r from-primary to-[#1e40af] hover:from-cyan hover:to-primary text-white font-bold py-3 px-8 sm:py-4 sm:px-10 rounded-full text-base sm:text-lg transition-all duration-300 transform hover:scale-110 shadow-lg shadow-cyan-500/30 cursor-pointer animate-fade-in-up overflow-hidden" style="animation-duration: 0.8s; animation-delay: 0.4s;">
+          <span class="relative z-10 flex items-center gap-2">
+            Get Started
+            <span class="inline-block group-hover:translate-x-1 transition-transform duration-300">→</span>
+          </span>
+          <div class="absolute inset-0 bg-gradient-to-r from-cyan to-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+        </button>
+        
+        <!-- Secondary CTA -->
+        <a href="#features" class="px-8 py-3 sm:py-4 sm:px-10 rounded-full border-2 border-cyan/50 hover:border-cyan text-white font-bold hover:bg-cyan/10 transition-all duration-300 transform hover:scale-105 animate-fade-in-up" style="animation-duration: 0.8s; animation-delay: 0.5s;">
+          Explore Features
+        </a>
+      </div>
+    </div>
+    
+    <!-- Floating elements for visual interest -->
+    <div class="absolute bottom-10 left-1/2 transform -translate-x-1/2 flex gap-6 mt-8">
+      <div class="flex items-center gap-2 text-cyan/80 text-sm animate-bounce" style="animation-delay: 0s;">
+        <span class="w-3 h-3 rounded-full bg-cyan"></span>
+        <span>Free to Start</span>
+      </div>
+      <div class="flex items-center gap-2 text-primary/80 text-sm animate-bounce" style="animation-delay: 0.2s;">
+        <span class="w-3 h-3 rounded-full bg-primary"></span>
+        <span>AI-Powered</span>
+      </div>
+      <div class="flex items-center gap-2 text-accent/80 text-sm animate-bounce" style="animation-delay: 0.4s;">
+        <span class="w-3 h-3 rounded-full bg-accent"></span>
+        <span>24/7 Support</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Features Section -->
+<section id="features" class="relative py-16 sm:py-32 bg-gradient-to-b from-[#0a0a12] via-[#181a2a] to-[#23244a] flex flex-col items-center overflow-hidden">
+  <div class="max-w-6xl w-full px-4 sm:px-6 mx-auto">
+    <div class="text-center mb-16 sm:mb-20">
+      <h2 class="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 drop-shadow-glow">Powerful Features for Your Success</h2>
+      <p class="text-base sm:text-lg text-cyan/80 max-w-2xl mx-auto">Everything you need to master any subject, all in one platform</p>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      <!-- Premium Courses Card -->
+      <div class="group h-full bg-gradient-to-br from-surface2 to-surface2/50 border border-cyan/10 hover:border-cyan/30 rounded-2xl shadow-lg p-8 flex flex-col transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+        <div class="w-14 h-14 bg-gradient-to-br from-cyan/20 to-primary/20 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+          <svg class="w-7 h-7 text-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C6.5 6.253 2 10.998 2 17.25S6.5 28 12 28s10-4.745 10-10.75C22 10.998 17.5 6.253 12 6.253z" />
+          </svg>
+        </div>
+        <h3 class="text-xl font-semibold text-white mb-3">Premium Courses</h3>
+        <p class="text-gray-400 text-sm leading-relaxed flex-grow">Purchase and learn from thousands of high-quality courses created by expert instructors worldwide.</p>
+      </div>
+
+      <!-- Practice Mocks Card -->
+      <div class="group h-full bg-gradient-to-br from-surface2 to-surface2/50 border border-cyan/10 hover:border-cyan/30 rounded-2xl shadow-lg p-8 flex flex-col transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+        <div class="w-14 h-14 bg-gradient-to-br from-primary/20 to-accent/20 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+          <svg class="w-7 h-7 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <h3 class="text-xl font-semibold text-white mb-3">Practice Mocks</h3>
+        <p class="text-gray-400 text-sm leading-relaxed flex-grow">Test your knowledge with adaptive practice exams that identify weak areas and boost your confidence.</p>
+      </div>
+
+      <!-- Flashcards Card -->
+      <div class="group h-full bg-gradient-to-br from-surface2 to-surface2/50 border border-cyan/10 hover:border-cyan/30 rounded-2xl shadow-lg p-8 flex flex-col transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+        <div class="w-14 h-14 bg-gradient-to-br from-cyan/20 to-accent/20 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+          <svg class="w-7 h-7 text-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
+        </div>
+        <h3 class="text-xl font-semibold text-white mb-3">Flashcards</h3>
+        <p class="text-gray-400 text-sm leading-relaxed flex-grow">Create and memorize concepts with digital flashcards powered by spaced repetition algorithms.</p>
+      </div>
+
+      <!-- Mindmaps Card -->
+      <div class="group h-full bg-gradient-to-br from-surface2 to-surface2/50 border border-cyan/10 hover:border-cyan/30 rounded-2xl shadow-lg p-8 flex flex-col transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+        <div class="w-14 h-14 bg-gradient-to-br from-primary/20 to-cyan/20 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+          <svg class="w-7 h-7 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+        </div>
+        <h3 class="text-xl font-semibold text-white mb-3">Mindmaps</h3>
+        <p class="text-gray-400 text-sm leading-relaxed flex-grow">Visualize complex topics with interactive mindmaps that break down concepts into digestible parts.</p>
+      </div>
+
+      <!-- 24/7 AI Assistance Card -->
+      <div class="group h-full bg-gradient-to-br from-surface2 to-surface2/50 border border-cyan/10 hover:border-cyan/30 rounded-2xl shadow-lg p-8 flex flex-col transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+        <div class="w-14 h-14 bg-gradient-to-br from-accent/20 to-cyan/20 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+          <svg class="w-7 h-7 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        </div>
+        <h3 class="text-xl font-semibold text-white mb-3">24/7 AI Assistant</h3>
+        <p class="text-gray-400 text-sm leading-relaxed flex-grow">Get instant answers, detailed explanations, and personalized guidance anytime you need help.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Why MentorStreak Section -->
+<section id="why" class="relative py-16 sm:py-32 bg-gradient-to-b from-[#0a0a12] via-[#181a2a] to-[#23244a] flex flex-col items-center overflow-hidden">
+  <div class="max-w-6xl w-full px-4 sm:px-6 mx-auto">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+      <!-- Traditional Learning Limitations -->
+      <div class="bg-gradient-to-br from-surface2 to-surface2/50 border border-cyan/10 rounded-2xl shadow-lg p-8 transition-all duration-300 hover:shadow-xl">
+        <h3 class="text-2xl font-bold text-white mb-6">Traditional Learning Limitations</h3>
+        <ul class="space-y-4 text-gray-300 text-sm sm:text-base">
+          <li class="flex gap-3">
+            <span class="text-red-400 font-bold flex-shrink-0">✕</span>
+            <span>Limited access to quality course content</span>
+          </li>
+          <li class="flex gap-3">
+            <span class="text-red-400 font-bold flex-shrink-0">✕</span>
+            <span>One-way learning without personalization</span>
+          </li>
+          <li class="flex gap-3">
+            <span class="text-red-400 font-bold flex-shrink-0">✕</span>
+            <span>No immediate help when you get stuck</span>
+          </li>
+        </ul>
+      </div>
+      <!-- MentorStreak Advantage -->
+      <div class="bg-gradient-to-br from-primary/10 to-cyan/10 border border-primary/30 rounded-2xl shadow-lg p-8 transition-all duration-300 hover:shadow-xl">
+        <h3 class="text-2xl font-bold text-white mb-6">MentorStreak Advantage</h3>
+        <ul class="space-y-4 text-gray-300 text-sm sm:text-base">
+          <li class="flex gap-3">
+            <span class="text-cyan font-bold flex-shrink-0">✓</span>
+            <span>Access thousands of premium courses anytime</span>
+          </li>
+          <li class="flex gap-3">
+            <span class="text-cyan font-bold flex-shrink-0">✓</span>
+            <span>AI-powered personalized learning experience</span>
+          </li>
+          <li class="flex gap-3">
+            <span class="text-cyan font-bold flex-shrink-0">✓</span>
+            <span>24/7 AI mentor for instant doubt resolution</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <blockquote class="bg-gradient-to-r from-cyan/10 to-primary/10 border-l-4 border-cyan rounded-lg p-8 text-center max-w-3xl mx-auto">
+      <p class="text-lg sm:text-2xl font-semibold text-white drop-shadow-glow">"MentorStreak brings Udemy-quality courses with AI-powered personalization to students everywhere."</p>
+    </blockquote>
+  </div>
+</section>
+
+<!-- Testimonials Section -->
+<section id="testimonials" class="relative py-16 sm:py-32 bg-gradient-to-b from-[#0a0a12] via-[#181a2a] to-[#23244a] flex flex-col items-center overflow-hidden">
+  <div class="max-w-6xl w-full px-4 sm:px-6 mx-auto">
+    <div class="text-center mb-16 sm:mb-20">
+      <h2 class="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 drop-shadow-glow">What Users Say</h2>
+      <p class="text-base sm:text-lg text-cyan/80 max-w-2xl mx-auto">Join thousands of students learning with MentorStreak</p>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 relative z-10">
+      <!-- Testimonial 1 -->
+      <div class="bg-gradient-to-br from-surface2 to-surface2/50 border border-cyan/10 hover:border-cyan/30 rounded-2xl shadow-lg p-8 flex flex-col transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+        <div class="flex items-center gap-4 mb-6">
+          <img src="https://randomuser.me/api/portraits/lego/1.jpg" alt="Aarav S." class="w-12 h-12 rounded-full border-2 border-cyan/30 flex-shrink-0" />
+          <div class="flex-1 min-w-0">
+            <p class="text-white font-semibold text-sm">Aarav S.</p>
+            <p class="text-cyan/70 text-xs">Grade 7 Student</p>
+          </div>
+        </div>
+        <div class="flex gap-0.5 mb-4">
+          <span class="text-yellow-400">★</span>
+          <span class="text-yellow-400">★</span>
+          <span class="text-yellow-400">★</span>
+          <span class="text-yellow-400">★</span>
+          <span class="text-yellow-400">★</span>
+        </div>
+        <p class="text-gray-300 text-sm leading-relaxed flex-grow">"The courses on MentorStreak are amazing and the AI help is so useful!"</p>
+      </div>
+
+      <!-- Testimonial 2 -->
+      <div class="bg-gradient-to-br from-surface2 to-surface2/50 border border-cyan/10 hover:border-cyan/30 rounded-2xl shadow-lg p-8 flex flex-col transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+        <div class="flex items-center gap-4 mb-6">
+          <img src="https://randomuser.me/api/portraits/lego/2.jpg" alt="Priya M." class="w-12 h-12 rounded-full border-2 border-cyan/30 flex-shrink-0" />
+          <div class="flex-1 min-w-0">
+            <p class="text-white font-semibold text-sm">Priya M.</p>
+            <p class="text-cyan/70 text-xs">Class 4 Parent</p>
+          </div>
+        </div>
+        <div class="flex gap-0.5 mb-4">
+          <span class="text-yellow-400">★</span>
+          <span class="text-yellow-400">★</span>
+          <span class="text-yellow-400">★</span>
+          <span class="text-yellow-400">★</span>
+          <span class="text-yellow-400">★</span>
+        </div>
+        <p class="text-gray-300 text-sm leading-relaxed flex-grow">"I can get help with any course anytime. Perfect for self-paced learning!"</p>
+      </div>
+
+      <!-- Testimonial 3 -->
+      <div class="bg-gradient-to-br from-surface2 to-surface2/50 border border-cyan/10 hover:border-cyan/30 rounded-2xl shadow-lg p-8 flex flex-col transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+        <div class="flex items-center gap-4 mb-6">
+          <img src="https://randomuser.me/api/portraits/men/43.jpg" alt="Riya K." class="w-12 h-12 rounded-full border-2 border-cyan/30 flex-shrink-0" />
+          <div class="flex-1 min-w-0">
+            <p class="text-white font-semibold text-sm">Riya K.</p>
+            <p class="text-cyan/70 text-xs">Grade 10 Student</p>
+          </div>
+        </div>
+        <div class="flex gap-0.5 mb-4">
+          <span class="text-yellow-400">★</span>
+          <span class="text-yellow-400">★</span>
+          <span class="text-yellow-400">★</span>
+          <span class="text-yellow-400">★</span>
+          <span class="text-yellow-400">★</span>
+        </div>
+        <p class="text-gray-300 text-sm leading-relaxed flex-grow">"MentorStreak's mocks and flashcards helped me prep for my exams!"</p>
+      </div>
+
+      <!-- Testimonial 4 -->
+      <div class="bg-gradient-to-br from-surface2 to-surface2/50 border border-cyan/10 hover:border-cyan/30 rounded-2xl shadow-lg p-8 flex flex-col transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+        <div class="flex items-center gap-4 mb-6">
+          <img src="https://randomuser.me/api/portraits/women/65.jpg" alt="Meena D." class="w-12 h-12 rounded-full border-2 border-cyan/30 flex-shrink-0" />
+          <div class="flex-1 min-w-0">
+            <p class="text-white font-semibold text-sm">Meena D.</p>
+            <p class="text-cyan/70 text-xs">Parent</p>
+          </div>
+        </div>
+        <div class="flex gap-0.5 mb-4">
+          <span class="text-yellow-400">★</span>
+          <span class="text-yellow-400">★</span>
+          <span class="text-yellow-400">★</span>
+          <span class="text-yellow-400">★</span>
+          <span class="text-yellow-400">★</span>
+        </div>
+        <p class="text-gray-300 text-sm leading-relaxed flex-grow">"Best app for learning! The courses and AI help are incredible."</p>
+      </div>
+
+      <!-- Testimonial 5 -->
+      <div class="bg-gradient-to-br from-surface2 to-surface2/50 border border-cyan/10 hover:border-cyan/30 rounded-2xl shadow-lg p-8 flex flex-col transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+        <div class="flex items-center gap-4 mb-6">
+          <img src="https://randomuser.me/api/portraits/men/77.jpg" alt="Suresh P." class="w-12 h-12 rounded-full border-2 border-cyan/30 flex-shrink-0" />
+          <div class="flex-1 min-w-0">
+            <p class="text-white font-semibold text-sm">Suresh P.</p>
+            <p class="text-cyan/70 text-xs">Parent</p>
+          </div>
+        </div>
+        <div class="flex gap-0.5 mb-4">
+          <span class="text-yellow-400">★</span>
+          <span class="text-yellow-400">★</span>
+          <span class="text-yellow-400">★</span>
+          <span class="text-yellow-400">★</span>
+          <span class="text-yellow-400">★</span>
+        </div>
+        <p class="text-gray-300 text-sm leading-relaxed flex-grow">"I love learning at my own pace with MentorStreak's diverse courses."</p>
+      </div>
+
+      <!-- Testimonial 6 -->
+      <div class="bg-gradient-to-br from-surface2 to-surface2/50 border border-cyan/10 hover:border-cyan/30 rounded-2xl shadow-lg p-8 flex flex-col transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+        <div class="flex items-center gap-4 mb-6">
+          <img src="https://randomuser.me/api/portraits/women/12.jpg" alt="Fatima Z." class="w-12 h-12 rounded-full border-2 border-cyan/30 flex-shrink-0" />
+          <div class="flex-1 min-w-0">
+            <p class="text-white font-semibold text-sm">Fatima Z.</p>
+            <p class="text-cyan/70 text-xs">Grade 8 Student</p>
+          </div>
+        </div>
+        <div class="flex gap-0.5 mb-4">
+          <span class="text-yellow-400">★</span>
+          <span class="text-yellow-400">★</span>
+          <span class="text-yellow-400">★</span>
+          <span class="text-yellow-400">★</span>
+          <span class="text-yellow-400">★</span>
+        </div>
+        <p class="text-gray-300 text-sm leading-relaxed flex-grow">"The mindmaps feature makes studying so much easier and fun!"</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA Section -->
+<section id="cta" class="relative py-16 sm:py-24 bg-gradient-to-b from-[#0a0a12] via-[#181a2a] to-[#23244a] flex flex-col items-center text-center overflow-hidden">
+  <div class="max-w-4xl w-full px-4 sm:px-6 mx-auto relative z-10">
+    <h2 class="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-6 drop-shadow-glow">Ready to Master Any Subject?</h2>
+    <p class="text-base sm:text-lg md:text-xl text-cyan/80 mb-8 max-w-2xl mx-auto">Download MentorStreak on iOS or Android. Explore unlimited courses with AI guidance. No credit card required.</p>
+    <a (click)="openAppPopup(true)" class="inline-block bg-gradient-to-r from-primary to-[#1e40af] hover:from-cyan hover:to-primary text-white font-bold py-3 px-8 sm:py-4 sm:px-10 rounded-full text-base sm:text-lg transition-all duration-300 transform hover:scale-105 shadow-lg shadow-cyan-500/30 cursor-pointer">Download Now</a>
+  </div>
+</section>
+
+<!-- App Download Popup -->
+<div *ngIf="showAppPopup" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+  <div class="bg-gradient-to-br from-surface2 to-surface2/50 rounded-2xl shadow-4xl p-6 sm:p-8 w-full max-w-xs sm:max-w-sm md:max-w-md text-center relative flex flex-col items-center border border-cyan/10">
+    <button (click)="closeAppPopup()" class="absolute top-4 right-4 text-white hover:text-cyan text-2xl font-bold transition-colors">&times;</button>
+    <h2 class="text-2xl sm:text-3xl font-bold text-white mb-4">Get MentorStreak</h2>
+    <p class="text-sm sm:text-base text-gray-300 mb-8">Access premium courses, practice with mocks, create flashcards, visualize with mindmaps, and get 24/7 AI assistance. Available on Google Play and App Store.</p>
+    <div class="flex flex-col gap-4 w-full mb-4">
+      <a href="https://play.google.com/store/apps/details?id=com.adroytz.Mentorstreak" target="_blank" rel="noopener" class="inline-block">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Get it on Google Play" class="h-14 w-auto mx-auto" />
+      </a>
+      <a *ngIf="showIos" href="https://apps.apple.com/app/id1234567890" target="_blank" rel="noopener" class="inline-block">
+        <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" class="h-14 w-auto mx-auto" />
+      </a>
+    </div>
+    <p class="text-xs text-gray-400">Available on Google Play and App Store</p>
+  </div>
+</div>

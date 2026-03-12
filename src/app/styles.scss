@@ -1,0 +1,23 @@
+:root {
+  --primary: #5f6fff;
+  --accent: #00ff99; //a259ff
+  --cyan: #00d4ff;
+  --background: #0a0a12;
+  --surface1: #181a2a;
+  --surface2: #23244a;
+  --white: #fff;
+}
+body {
+  background: linear-gradient(135deg, var(--background) 0%, var(--surface1) 50%, var(--surface2) 100%);
+  color: var(--white);
+}
+.bg-primary { background: var(--primary) !important; }
+.bg-accent { background: var(--accent) !important; }
+.bg-cyan { background: var(--cyan) !important; }
+.text-primary { color: var(--primary) !important; }
+.text-accent { color: var(--accent) !important; }
+.text-cyan { color: var(--cyan) !important; }
+.text-background { color: var(--background) !important; }
+.drop-shadow-glow { text-shadow: 0 0 16px var(--primary), 0 0 2px var(--cyan); }
+.shadow-glow { box-shadow: 0 0 32px 0 var(--primary), 0 0 8px 0 var(--cyan); }
+.shadow-glow-orangeblue { box-shadow: 0 0 32px 0 var(--accent), 0 0 8px 0 var(--primary); } 

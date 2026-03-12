@@ -1,0 +1,46 @@
+<div class="space-y-4 p-4 border rounded-lg bg-white">
+    <div class="flex items-center justify-between">
+        <h3 class="font-semibold">Subjects</h3>
+    </div>
+
+    <div *ngIf="!(course.subjects && course.subjects.length)" class="text-sm text-gray-500">No subjects yet — add
+        subjects using the button below.</div>
+
+    <div *ngFor="let s of course.subjects; let i = index"
+        class="p-3 border rounded-lg bg-gray-50 flex items-center justify-between">
+        <div class="flex items-center gap-3 flex-1">
+            <input [(ngModel)]="s.name" (ngModelChange)="onSubjectChange(i); onCourseChange()"
+                placeholder="Subject Title" class="flex-1 rounded-md border border-gray-200 px-3 py-2 text-gray-900" />
+            <div class="text-xs text-gray-500">{{ s.id ? 'saved' : 'local' }}</div>
+            <div *ngIf="showErrors && (!s.name || !s.name.trim())" class="text-xs text-red-600 ml-2">Subject title is required</div>
+        </div>
+        <div class="flex gap-2 ml-4">
+            <button (click)="removeSubject(i)" title="Delete subject" aria-label="Delete subject" class="px-2 py-1 rounded bg-red-600 text-white">
+                <!-- simple trash icon -->
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="mt-3">
+        <button (click)="addSubject()"
+            class="py-2 px-4 rounded bg-indigo-600 text-white shadow hover:bg-indigo-700 transition-all duration-200 transform hover:scale-105 text-sm">+
+            Add Subject</button>
+    </div>
+
+    <div class="flex justify-between mt-4">
+        <div class="text-sm text-gray-500">Subjects are containers for chapters.</div>
+        <div class="flex gap-2">
+            <button class="py-2 px-4 rounded border" (click)="back.emit()">Back</button>
+            <button
+                class="py-2 px-6 rounded bg-indigo-600 text-white shadow hover:bg-indigo-700 transition-all duration-200 transform hover:scale-105"
+                (click)="attemptSave()"
+                [disabled]="loading">{{ loading
+                ? 'Saving...' : 'Save Subjects' }}</button>
+            <button *ngIf="!sectionHasChanges()" (click)="attemptContinue()"
+                class="py-2 px-6 rounded border ml-2">Continue</button>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,29 @@
+<section class="min-h-screen bg-background py-24 px-4 flex flex-col items-center">
+  <h1 class="text-4xl md:text-6xl font-bold bg-gradient-to-r from-[#2563eb]  to-[#06b6d4] bg-clip-text text-transparent mb-6">Contact Us</h1>
+  <p class="text-lg md:text-xl text-cyan mb-8">We'd love to hear from you. Reach out for support or partnership.</p>
+  <form class="bg-white/5 backdrop-blur-xs rounded-2xl shadow-glass p-8 w-full max-w-lg flex flex-col gap-6 mb-8" (submit)="onSubmit()">
+    <input name="name" required minlength="2" maxlength="100" placeholder="Name" class="px-4 py-3 rounded-lg bg-background/80 text-white border border-accent/30 focus:border-primary outline-none transition" />
+    <p class="text-xs text-gray-400 mt-1">2-100 characters</p>
+    <input name="email" required type="email" maxlength="254" placeholder="Email" class="px-4 py-3 rounded-lg bg-background/80 text-white border border-accent/30 focus:border-primary outline-none transition" />
+    <select name="role" required class="px-4 py-3 rounded-lg bg-background/80 text-white border border-accent/30 focus:border-primary outline-none transition">
+      <option value="" disabled selected>I am a...</option>
+      <option value="Student">Student</option>
+      <option value="Parent">Parent</option>
+      <option value="School">School</option>
+      <option value="Other">Other</option>
+    </select>
+    <textarea name="message" required rows="4" minlength="10" maxlength="2000" placeholder="Message" class="px-4 py-3 rounded-lg bg-background/80 text-white border border-accent/30 focus:border-primary outline-none transition"></textarea>
+    <p class="text-xs text-gray-400 mt-1">10-2000 characters</p>
+    <button type="submit" class="bg-primary text-background px-8 py-3 rounded-full font-semibold transition border border-primary hover:shadow-glow hover:scale-105">Send Message</button>
+    <div *ngIf="submitted" class="text-cyan text-center mt-2">Thank you! We'll get back to you soon.</div>
+  </form>
+  <div class="flex flex-col items-center gap-2 text-gray-300">
+    <div><strong>Email:</strong> <span>support&#64;mentorstreak.com</span></div>
+    <!--<div><strong>Phone:</strong> <span>+91 98765 43210</span></div>-->
+    <div class="flex gap-4 mt-2">
+      <a href="#" aria-label="Twitter" class="hover:text-cyan transition"><i class="fab fa-twitter"></i></a>
+      <a href="#" aria-label="Instagram" class="hover:text-cyan transition"><i class="fab fa-instagram"></i></a>
+      <a href="#" aria-label="LinkedIn" class="hover:text-cyan transition"><i class="fab fa-linkedin"></i></a>
+    </div>
+  </div>
+</section>

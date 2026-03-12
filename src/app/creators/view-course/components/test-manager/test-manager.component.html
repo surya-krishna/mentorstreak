@@ -1,0 +1,834 @@
+﻿<!-- Placeholder State -->
+<div *ngIf="!currentTest && !isLoadingDetails" class="h-full flex flex-col items-center justify-center text-gray-400">
+    <svg class="w-16 h-16 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
+        </path>
+    </svg>
+    <p class="text-lg font-medium">Select a test to view details</p>
+    <p class="text-sm">or create a new one from the sidebar</p>
+</div>
+
+<!-- Editor Form -->
+<div *ngIf="currentTest && !isLoadingDetails" class="p-6 space-y-6">
+    <div class="flex items-center justify-between mb-4 border-b pb-4">
+        <h2 class="text-xl font-bold text-gray-800">{{ currentTest.id ? 'Edit Test' : 'New Test' }}</h2>
+        <div class="flex gap-3">
+            <button (click)="cancelTestEdit()"
+                class="px-4 py-2 rounded border text-gray-600 hover:bg-gray-50 text-sm">Cancel</button>
+            <button (click)="attemptSaveTest()"
+                class="px-6 py-2 rounded bg-indigo-600 text-white shadow hover:bg-indigo-700 transition-all font-medium text-sm">
+                Save Test
+            </button>
+        </div>
+    </div>
+
+    <!-- Test Basic Info -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg border">
+        <div class="col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Test Title <span
+                    class="text-red-600">*</span></label>
+            <input [(ngModel)]="currentTest.title" placeholder="e.g. Chapter 1 Quiz" minlength="3" maxlength="100"
+                class="w-full rounded-md border border-gray-200 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+            <p class="text-xs text-gray-500 mt-1">{{ (currentTest.title?.length || 0) }}/100 characters</p>
+            <div *ngIf="showManualErrors && (!currentTest.title || !currentTest.title.trim())"
+                class="text-xs text-red-600 mt-1">Test title is required</div>
+        </div>
+
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Duration (minutes) <span
+                    class="text-red-600">*</span></label>
+            <input type="number" [(ngModel)]="currentTest.duration" min="1" max="480"
+                class="w-full rounded-md border border-gray-200 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+            <p class="text-xs text-gray-500 mt-1">1-480 minutes (8 hours max)</p>
+            <div *ngIf="showManualErrors && !(currentTest.duration > 0)" class="text-xs text-red-600 mt-1">Duration must
+                be greater than 0</div>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Test Type <span
+                    class="text-red-600">*</span></label>
+            <select [(ngModel)]="currentTest.type" (ngModelChange)="onTestTypeChange($event)"
+                class="w-full rounded-md border border-gray-200 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                <option *ngFor="let type of testTypes" [value]="type">{{ type }}</option>
+            </select>
+            <div *ngIf="showManualErrors && !currentTest.type" class="text-xs text-red-600 mt-1">Test type is required
+            </div>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Scoring Formula</label>
+            <select [(ngModel)]="currentTest.scoringFormula"
+                class="w-full rounded-md border border-gray-200 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                <option *ngFor="let formula of scoringFormulas" [value]="formula">{{ formula }}</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Unattempted Marks</label>
+            <input type="number" [(ngModel)]="currentTest.unattemptedMarks"
+                class="w-full rounded-md border border-gray-200 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+        </div>
+
+        <div *ngIf="currentTest.type === 'OVERALL'" class="col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Select Subjects (applies to whole test) <span
+                    class="text-red-600">*</span></label>
+            <select multiple [(ngModel)]="currentTest.selectedSubjects"
+                class="w-full border rounded px-2 py-1 text-sm h-28">
+                <option *ngFor="let s of getAllSubjects()" [value]="s">{{s}}</option>
+            </select>
+            <div *ngIf="showManualErrors && (!currentTest.selectedSubjects || !currentTest.selectedSubjects.length)"
+                class="text-xs text-red-600 mt-1">Select at least one subject for OVERALL tests</div>
+        </div>
+
+        <div class="col-span-2 flex items-center gap-2 mt-2">
+            <input type="checkbox" id="negMarking" [(ngModel)]="currentTest.hasNegativeMarking"
+                class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+            <label for="negMarking" class="text-sm font-medium text-gray-700 select-none cursor-pointer">Enable
+                Negative Marking for this test</label>
+        </div>
+    </div>
+
+
+    <!-- Sections -->
+    <div class="space-y-4">
+        <div *ngFor="let section of currentTest.sections; let si = index" class="border rounded-lg overflow-hidden">
+            <div class="bg-gray-100 p-3 flex items-center justify-between border-b">
+                <div class="flex flex-col gap-2 flex-1">
+                    <div class="flex items-center gap-3">
+                        <span class="font-medium text-gray-500">Section {{si + 1}}</span>
+                        <input [(ngModel)]="section.name" placeholder="Section Name"
+                            class="bg-white border border-gray-300 rounded px-2 py-1 text-sm w-64 focus:ring-1 focus:ring-indigo-500" />
+                        <div *ngIf="showManualErrors && (!section.name || !section.name.trim())"
+                            class="text-xs text-red-600">Section name is required</div>
+
+                        <div class="flex items-center gap-2 ml-4">
+                            <label class="text-xs text-gray-500">Time Limit (mins):</label>
+                            <input type="number" [(ngModel)]="section.timeLimit" placeholder="0 = No Limit"
+                                class="w-20 rounded border border-gray-300 px-2 py-1 text-sm" />
+                        </div>
+                    </div>
+
+                    <div *ngIf="currentTest.type === 'OVERALL'" class="flex items-center gap-2 text-sm">
+                        <span class="text-gray-500">Covered Chapters:</span>
+                        <select multiple [(ngModel)]="section.selectedChapters"
+                            (ngModelChange)="ensureChapterDistribution(section)"
+                            class="border rounded px-2 py-1 text-sm h-20 w-full max-w-md">
+                            <option *ngFor="let ch of getChaptersForSubjects(currentTest.selectedSubjects)"
+                                [value]="ch.id">{{ch.subject}} - {{ch.name}}
+                            </option>
+                        </select>
+                        <div class="text-xs text-gray-400">(Hold Ctrl to select multiple)</div>
+                    </div>
+                    <!-- If CHAPTER type, require selecting subject then chapter -->
+                    <div *ngIf="currentTest.type === 'CHAPTER'" class="mt-2">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Select Subject <span
+                                        class="text-red-600">*</span></label>
+                                <select [(ngModel)]="currentTest.selectedSubject" (ngModelChange)="onSubjectChange()"
+                                    class="w-full rounded-md border border-gray-200 px-3 py-2 text-sm">
+                                    <option [value]="null">-- Select a Subject --</option>
+                                    <option *ngFor="let subject of getAllSubjects()" [value]="subject">{{subject}}
+                                    </option>
+                                </select>
+                                <div *ngIf="showManualErrors && (!currentTest.selectedSubject || !currentTest.selectedSubject.trim())"
+                                    class="text-xs text-red-600 mt-1">Subject required for CHAPTER tests</div>
+                            </div>
+                            <div *ngIf="currentTest.selectedSubject">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Select Chapter <span
+                                        class="text-red-600">*</span></label>
+                                <select [(ngModel)]="currentTest.chapterId"
+                                    class="w-full rounded-md border border-gray-200 px-3 py-2 text-sm">
+                                    <option [value]="null">-- Select a Chapter --</option>
+                                    <option *ngFor="let ch of getChaptersBySubject(currentTest.selectedSubject)"
+                                        [value]="ch.id">{{ch.name}}</option>
+                                </select>
+                                <div *ngIf="showManualErrors && !currentTest.chapterId"
+                                    class="text-xs text-red-600 mt-1">Chapter required for CHAPTER tests</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button *ngIf="currentTest.sections && currentTest.sections.length>1" (click)="prevSection()"
+                        class="text-sm px-2 py-1 rounded border">Prev</button>
+                    <button *ngIf="currentTest.sections && currentTest.sections.length>1" (click)="nextSection()"
+                        class="text-sm px-2 py-1 rounded border">Next</button>
+                    <button (click)="removeSection(si)" title="Delete section" aria-label="Delete section"
+                        class="text-red-600 hover:text-red-800 text-sm font-medium px-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-4 space-y-4 bg-white">
+                <!-- Passage Manager Section -->
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="font-semibold text-gray-700 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
+                                <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 1 1 0 000 2H3a1 1 0 00-1 1v12a1 1 0 001 1h14a1 1 0 001-1V6a1 1 0 00-1-1h-3a1 1 0 000-2h2a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm2.5 7a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/>
+                            </svg>
+                            Passages in this Section
+                        </h4>
+                        <button (click)="openPassageModal(si)"
+                            class="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            Add Passage
+                        </button>
+                    </div>
+
+                    <!-- Passages List -->
+                    <div *ngIf="getPassagesInSection(si).length > 0" class="space-y-2">
+                        <div *ngFor="let passage of getPassagesInSection(si)" 
+                            class="bg-white p-3 rounded border border-blue-100 hover:border-blue-300 transition">
+                            
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="flex-1 min-w-0">
+                                    <h5 class="font-medium text-gray-700 text-sm">Passage {{passage.passageId}}</h5>
+                                    <p class="text-xs text-gray-600 mt-1 line-clamp-2">{{passage.content}}</p>
+                                    <div *ngIf="passage.sourceAttribution" class="text-xs text-gray-500 mt-1">
+                                        <strong>Source:</strong> {{passage.sourceAttribution}}
+                                    </div>
+                                </div>
+                                
+                                <div class="flex gap-2 flex-shrink-0">
+                                    <button (click)="openPassageModal(si, passage)"
+                                        class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Edit</button>
+                                    <button (click)="deletePassage(si, passage.passageId)"
+                                        class="text-xs text-red-600 hover:text-red-800 font-medium">Delete</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Questions linked to this passage -->
+                            <div class="mt-2 text-xs text-gray-500">
+                                <strong>Questions:</strong>
+                                <span *ngIf="getQuestionsForPassage(si, passage.passageId).length > 0" 
+                                    class="text-blue-600">
+                                    {{getQuestionsForPassage(si, passage.passageId).length}} question(s)
+                                </span>
+                                <span *ngIf="getQuestionsForPassage(si, passage.passageId).length === 0" 
+                                    class="text-orange-600">
+                                    No questions yet
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div *ngIf="getPassagesInSection(si).length === 0" 
+                        class="text-center text-xs text-gray-500 py-2">
+                        No passages added yet
+                    </div>
+                </div>
+
+                <!-- Section Marking Settings -->
+                <div class="flex flex-wrap items-center gap-6 p-3 bg-indigo-50 rounded-md border border-indigo-100">
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" [id]="'uniform-'+si" [(ngModel)]="section.useUniformMarking"
+                            (change)="onUniformMarkingToggle(si)"
+                            class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+                        <label [for]="'uniform-'+si"
+                            class="text-sm font-medium text-gray-700 cursor-pointer select-none">
+                            Same marking scheme for all questions
+                        </label>
+                    </div>
+
+                    <div *ngIf="section.useUniformMarking" class="flex items-center gap-4 animate-fadeIn">
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs font-medium text-gray-600 uppercase">Correct</label>
+                            <input type="number" [(ngModel)]="section.uniformMarksPos"
+                                (change)="onUniformMarksChange(si)"
+                                class="w-20 rounded border border-gray-300 px-2 py-1 text-sm text-green-700 font-medium"
+                                placeholder="+1">
+                        </div>
+
+                        <div *ngIf="currentTest.hasNegativeMarking" class="flex items-center gap-2">
+                            <label class="text-xs font-medium text-gray-600 uppercase">Wrong</label>
+                            <input type="number" [(ngModel)]="section.uniformMarksNeg"
+                                (change)="onUniformMarksChange(si)"
+                                class="w-20 rounded border border-gray-300 px-2 py-1 text-sm text-red-700 font-medium"
+                                placeholder="-0.25">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Questions List -->
+                <div class="space-y-4 pl-2">
+                    <div *ngFor="let q of section.questions; let qi = index">
+                        <div class="flex gap-4 group py-3">
+                            <div class="pt-2 text-gray-400 font-medium text-sm">{{qi + 1}}.</div>
+                            <div class="flex-1 space-y-3">
+                                <div class="flex items-start gap-3">
+                                    <div class="flex-1 space-y-2">
+                                        <div class="flex gap-2">
+                                            <select [(ngModel)]="q.type"
+                                                class="w-32 rounded border border-gray-200 px-2 py-1 text-xs font-medium">
+                                                <option *ngFor="let t of questionTypes" [value]="t">{{t}}</option>
+                                            </select>
+
+                                            <textarea [(ngModel)]="q.text" placeholder="Question text" rows="2" maxlength="2000"
+                                                class="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"></textarea>
+                                            <p class="text-xs text-gray-500 mt-1">{{ (q.text?.length || 0) }}/2000 characters</p>
+
+                                        </div>
+
+                                        <!-- Passage Type: Require Passage Selection -->
+                                        <div *ngIf="q.type === 'Passage'" class="space-y-2 bg-blue-50 p-3 rounded border border-blue-100">
+                                            
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                                    Select Passage <span class="text-red-600">*</span>
+                                                </label>
+                                                <select [(ngModel)]="q.passageId"
+                                                    class="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:ring-2 focus:ring-indigo-500">
+                                                    <option [value]="null">-- Select a Passage --</option>
+                                                    <option *ngFor="let p of getPassagesInSection(si)" [value]="p.passageId">
+                                                        {{p.passageId}} - {{p.content | slice:0:40}}...
+                                                    </option>
+                                                </select>
+                                                <div *ngIf="showManualErrors && !q.passageId" 
+                                                    class="text-xs text-red-600 mt-1">
+                                                    Passage is required for Passage-type questions
+                                                </div>
+                                            </div>
+
+                                            <!-- Show selected passage preview -->
+                                            <div *ngIf="q.passageId && getPassageById(si, q.passageId) as passage">
+                                                <div class="bg-white p-2 rounded text-xs border-l-4 border-blue-600">
+                                                    <p class="font-medium text-gray-700 mb-1">Passage:</p>
+                                                    <p class="text-gray-600 line-clamp-3">{{passage.content}}</p>
+                                                    <div *ngIf="passage.sourceAttribution" class="text-gray-500 text-xs mt-1">
+                                                        {{passage.sourceAttribution}}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                                    Question Sub-Type <span class="text-red-600">*</span>
+                                                </label>
+                                                <select [(ngModel)]="q.questionSubType"
+                                                    class="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:ring-2 focus:ring-indigo-500">
+                                                    <option [value]="null">-- Select sub-type --</option>
+                                                    <option value="MCQ">Multiple Choice</option>
+                                                    <option value="MSQ">Multiple Select</option>
+                                                    <option value="True/False">True/False</option>
+                                                    <option value="Descriptive">Descriptive</option>
+                                                    <option value="Fill-in-the-Blanks">Fill-in-the-Blanks</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <!-- Image Illustration Controls -->
+                                        <div class="flex items-center gap-2 mt-2">
+                                            <button *ngIf="!q.image" (click)="triggerImageUpload(q)"
+                                                class="text-xs flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
+                                                    </path>
+                                                </svg>
+                                                Upload Image
+                                            </button>
+                                            <div *ngIf="q.image" class="flex items-center gap-3">
+                                                <span class="text-xs text-green-600 flex items-center gap-1">
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                    </svg>
+                                                    Image Attached
+                                                </span>
+                                                <button (click)="openPreview(q.image)"
+                                                    class="text-xs text-indigo-600 hover:text-indigo-800 underline">View
+                                                    Image</button>
+                                                <button (click)="deleteImage(q)"
+                                                    class="text-xs text-red-600 hover:text-red-800 underline">Delete
+                                                    Image</button>
+                                            </div>
+                                        </div>
+                                        <!-- Chapter Selection Dropdown -->
+                                        <div class="mt-3 flex items-center gap-2">
+                                            <label class="text-xs text-gray-600 font-medium whitespace-nowrap">Chapter:</label>
+                                            <select [(ngModel)]="q.chapterId"
+                                                class="flex-1 rounded border border-gray-200 px-2 py-1 text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white">
+                                                <option [value]="null">-- Select chapter to which this question belongs --</option>
+                                                <option *ngFor="let ch of getChaptersForQuestion()" [value]="ch.id">
+                                                    {{ch.subject}} - {{ch.name}}
+                                                </option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <!-- Question Individual Marks -->
+                                    <div *ngIf="!section.useUniformMarking" class="w-32 space-y-2">
+                                        <div>
+                                            <label
+                                                class="block text-[10px] text-gray-500 uppercase font-bold">Correct</label>
+                                            <input type="number" [(ngModel)]="q.marksPos"
+                                                class="w-full rounded border border-gray-200 px-2 py-1 text-sm text-green-700 font-medium">
+                                        </div>
+                                        <div *ngIf="currentTest.hasNegativeMarking">
+                                            <label
+                                                class="block text-[10px] text-gray-500 uppercase font-bold">Wrong</label>
+                                            <input type="number" [(ngModel)]="q.marksNeg"
+                                                class="w-full rounded border border-gray-200 px-2 py-1 text-sm text-red-700 font-medium">
+                                        </div>
+                                    </div>
+
+                                    <!-- Read-only Marks Display when Uniform -->
+                                    <div *ngIf="section.useUniformMarking" class="w-24 pt-1 opacity-75">
+                                        <div class="text-xs text-gray-500">Marks: <span
+                                                class="text-green-600 font-medium">+{{section.uniformMarksPos}}</span>
+                                        </div>
+                                        <div *ngIf="currentTest.hasNegativeMarking" class="text-xs text-gray-500">
+                                            Neg:
+                                            <span class="text-red-600 font-medium">{{section.uniformMarksNeg}}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Question Body based on Type -->
+                                <div class="space-y-2 pl-1" [ngSwitch]="q.type === 'Passage' ? q.questionSubType : q.type">
+
+                                    <!-- MCQ & True/False -->
+                                    <ng-container *ngSwitchCase="'MCQ'">
+                                        <div *ngFor="let opt of q.options; let oi = index"
+                                            class="flex items-center gap-3">
+                                            <input type="radio" [name]="'q-'+si+'-'+qi" [checked]="opt.isCorrect"
+                                                (change)="setCorrectOption(q, oi)"
+                                                class="text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer">
+                                            <input [(ngModel)]="opt.text" placeholder="Option {{oi + 1}}"
+                                                class="flex-1 rounded border border-gray-200 px-2 py-1 text-sm focus:border-indigo-500">
+                                            <button (click)="removeOption(q, oi)" [disabled]="q.options.length <= 2"
+                                                class="text-gray-400 hover:text-red-500 p-1 transition-colors"
+                                                [title]="q.options.length <= 2 ? 'At least two options required' : 'Delete option'">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <button (click)="addOption(q)"
+                                            class="text-xs text-indigo-600 font-medium hover:text-indigo-800">+ Add
+                                            Option</button>
+                                    </ng-container>
+
+                                    <ng-container *ngSwitchCase="'True/False'">
+                                        <div *ngFor="let opt of q.options; let oi = index"
+                                            class="flex items-center gap-3">
+                                            <input type="radio" [name]="'q-'+si+'-'+qi" [checked]="opt.isCorrect"
+                                                (change)="setCorrectOption(q, oi)"
+                                                class="text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer">
+                                            <input [(ngModel)]="opt.text"
+                                                class="w-24 rounded border border-gray-200 px-2 py-1 text-sm bg-gray-50">
+                                        </div>
+                                    </ng-container>
+
+                                    <!-- MSQ -->
+                                    <ng-container *ngSwitchCase="'MSQ'">
+                                        <div *ngFor="let opt of q.options; let oi = index"
+                                            class="flex items-center gap-3">
+                                            <input type="checkbox" [(ngModel)]="opt.isCorrect"
+                                                class="text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer">
+                                            <input [(ngModel)]="opt.text" placeholder="Option {{oi + 1}}"
+                                                class="flex-1 rounded border border-gray-200 px-2 py-1 text-sm focus:border-indigo-500">
+                                            <button (click)="removeOption(q, oi)" [disabled]="q.options.length <= 2"
+                                                class="text-gray-400 hover:text-red-500 p-1 transition-colors"
+                                                [title]="q.options.length <= 2 ? 'At least two options required' : 'Delete option'">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <button (click)="addOption(q)"
+                                            class="text-xs text-indigo-600 font-medium hover:text-indigo-800">+ Add
+                                            Option</button>
+                                    </ng-container>
+
+                                    <!-- Fill-in-the-Blanks -->
+                                    <ng-container *ngSwitchCase="'Fill-in-the-Blanks'">
+                                        <div class="flex items-center gap-3">
+                                            <label class="text-sm text-gray-600">Correct Answer:</label>
+                                            <input [(ngModel)]="q.correctAnswer" placeholder="Exact match answer" maxlength="200"
+                                                class="flex-1 rounded border border-gray-200 px-2 py-1 text-sm focus:border-indigo-500">
+                                        </div>
+                                    </ng-container>
+
+                                    <!-- Descriptive -->
+                                    <ng-container *ngSwitchCase="'Descriptive'">
+                                        <div class="space-y-1">
+                                            <label class="text-sm text-gray-600">Model Answer / Key Points:</label>
+                                            <textarea [(ngModel)]="q.correctAnswer" rows="3" maxlength="1000"
+                                                placeholder="Enter key points for manual grading..."
+                                                class="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:border-indigo-500"></textarea>
+                                            <p class="text-xs text-gray-500">{{ (q.correctAnswer?.length || 0) }}/1000 characters</p>
+                                        </div>
+                                    </ng-container>
+
+                                    <!-- Matching -->
+                                    <ng-container *ngSwitchCase="'Matching'">
+                                        <div class="space-y-2">
+                                            <div *ngFor="let pair of q.pairs; let pi = index"
+                                                class="flex items-center gap-2">
+                                                <input [(ngModel)]="pair.left" placeholder="Left Item"
+                                                    class="flex-1 rounded border border-gray-200 px-2 py-1 text-sm">
+                                                <span class="text-gray-400">↔</span>
+                                                <input [(ngModel)]="pair.right" placeholder="Right Item"
+                                                    class="flex-1 rounded border border-gray-200 px-2 py-1 text-sm">
+                                                <button (click)="removePair(q, pi)"
+                                                    class="text-gray-400 hover:text-red-500 px-1">×</button>
+                                            </div>
+                                            <button (click)="addPair(q)"
+                                                class="text-xs text-indigo-600 font-medium hover:text-indigo-800">
+                                                + Pair
+                                            </button>
+                                        </div>
+                                    </ng-container>
+
+                                    <!-- Sequence -->
+                                    <ng-container *ngSwitchCase="'Sequence'">
+                                        <div class="space-y-2">
+                                            <div *ngFor="let item of q.sequenceItems; let si = index"
+                                                class="flex items-center gap-2">
+                                                <span class="text-gray-400 text-xs w-6">{{si + 1}}.</span>
+                                                <input [(ngModel)]="item.text" placeholder="Item"
+                                                    class="flex-1 rounded border border-gray-200 px-2 py-1 text-sm">
+                                                <button (click)="removeSequenceItem(q, si)"
+                                                    class="text-gray-400 hover:text-red-500 px-1">×</button>
+                                            </div>
+                                            <button (click)="addSequenceItem(q)"
+                                                class="text-xs text-indigo-600 font-medium hover:text-indigo-800">+
+                                                Add Item</button>
+                                        </div>
+                                    </ng-container>
+
+                                </div>
+                                <!-- Explanation field for each question -->
+                                <div class="mt-2">
+                                    <label class="text-xs text-gray-600">Explanation (steps to derive answer)</label>
+                                    <textarea [(ngModel)]="q.explanation" rows="2"
+                                        placeholder="Explain solution steps..."
+                                        class="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:border-indigo-500"></textarea>
+                                </div>
+
+                                <div *ngIf="showManualErrors">
+                                    <div *ngIf="questionError(q, section)" class="text-xs text-red-600 mt-1">{{
+                                        questionError(q, section) }}</div>
+                                </div>
+
+                            </div>
+
+                            <button (click)="removeQuestion(si, qi)"
+                                class="self-start text-red-600 hover:text-red-800 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                title="Delete question" aria-label="Delete question">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </div>
+                        <!-- thin separator between questions -->
+                            <div class="h-px bg-gray-200 w-full mt-4"></div>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-dashed">
+                        <button (click)="addQuestion(si)"
+                            class="text-sm font-medium text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 4v16m8-8H4">
+                                </path>
+                            </svg>
+                            Add Question
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <button (click)="addSection()"
+                class="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-indigo-500 hover:text-indigo-600 transition-colors font-medium">
+                + Add New Section
+            </button>
+        </div>
+    </div>
+</div>
+
+    <!-- Auto Generate Modal -->
+    <div *ngIf="showAutoGenerateModal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-semibold">Auto Generate Test</h3>
+                <button (click)="closeAutoGen()" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="space-y-6">
+                <!-- Global Settings -->
+                <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                    <div class="flex flex-col md:flex-row md:items-center gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Test Type</label>
+                            <select [(ngModel)]="autoGenConfig.testType" (ngModelChange)="onTestTypeChange(autoGenConfig.testType)"
+                                class="block w-40 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2">
+                                <option *ngFor="let t of testTypes" [value]="t">{{t}}</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Total Number of Sections</label>
+                            <input type="number" [(ngModel)]="autoGenConfig.numSections" (change)="updateAutoGenSections()"
+                                min="1" max="10"
+                                class="block w-32 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2">
+                        </div>
+                        <span class="text-sm text-gray-500">Define how many sections your test will have.</span>
+                    </div>
+                </div>
+
+                <!-- Section Configurations -->
+                <div class="space-y-6">
+                    <div *ngFor="let sec of autoGenConfig.sections; let i = index"
+                        class="border rounded-lg overflow-hidden shadow-sm">
+                        <div class="bg-gray-100 px-4 py-3 border-b flex items-center justify-between">
+                            <h4 class="font-medium text-gray-700">Section {{i + 1}} Configuration</h4>
+                            <div class="flex items-center gap-2">
+                                <label class="text-xs text-gray-500">Section Name:</label>
+                                <input [(ngModel)]="sec.name" placeholder="e.g. Quantitative Aptitude"
+                                    class="text-sm border rounded px-2 py-1 w-48 focus:ring-1 focus:ring-indigo-500">
+                            </div>
+                        </div>
+
+                        <div class="p-4 bg-white space-y-4">
+
+                            <!-- Row 1: Basic Counts & Time -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 mb-1">Total
+                                        Questions</label>
+                                    <input type="number" [(ngModel)]="sec.questionCount"
+                                        (ngModelChange)="clampQuestionCount(sec)" min="1" max="30"
+                                        class="w-full border rounded px-3 py-2 text-sm focus:ring-1 focus:ring-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 mb-1">Time
+                                        Limit
+                                        (mins)</label>
+                                    <input type="number" [(ngModel)]="sec.timeLimit" min="0" max="480" placeholder="0 = No Limit"
+                                        class="w-full border rounded px-3 py-2 text-sm focus:ring-1 focus:ring-indigo-500">
+                                    <p class="text-xs text-gray-500 mt-1">0-480 minutes</p>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 mb-1">Unattempted
+                                        Marks</label>
+                                    <input type="number" [(ngModel)]="sec.unattemptedMarks" placeholder="0"
+                                        class="w-full border rounded px-3 py-2 text-sm focus:ring-1 focus:ring-indigo-500">
+                                </div>
+                            </div>
+
+                            <!-- Row 2: Marking Scheme -->
+                            <div class="bg-gray-50 p-3 rounded border">
+                                <label class="block text-xs font-medium text-gray-500 mb-2">Marking
+                                    Scheme
+                                    (per
+                                    question)</label>
+                                <div class="flex items-center gap-6">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-sm text-gray-600">Correct:</span>
+                                        <input type="number" [(ngModel)]="sec.marksPos" placeholder="+1"
+                                            class="w-24 border rounded px-2 py-1 text-sm text-green-700 font-medium">
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-sm text-gray-600">Incorrect:</span>
+                                        <input type="number" [(ngModel)]="sec.marksNeg" placeholder="0" min="0" max="10"
+                                            class="w-24 border rounded px-2 py-1 text-sm text-red-700 font-medium">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Row 3: Subjects & Chapters (dynamic single/multi select) -->
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">Subjects <span class="text-red-600">*</span></label>
+                                <ng-container *ngIf="autoGenConfig.testType === 'CHAPTER'; else multiSubject">
+                                    <select [(ngModel)]="sec.selectedSubjects" (ngModelChange)="onSubjectChange()"
+                                        class="w-full border rounded px-2 py-1 text-sm mb-2">
+                                        <option *ngFor="let subject of subjects" [value]="subject">{{subject}}</option>
+                                    </select>
+                                </ng-container>
+                                <ng-template #multiSubject>
+                                    <select multiple [(ngModel)]="sec.selectedSubjects" (ngModelChange)="onSubjectChange()"
+                                        class="w-full border rounded px-2 py-1 text-sm mb-2 h-24">
+                                        <option *ngFor="let subject of subjects" [value]="subject">{{subject}}</option>
+                                    </select>
+                                </ng-template>
+
+                                <label class="block text-xs font-medium text-gray-500 mb-1">Covered Chapters <span class="text-red-600">*</span></label>
+                                <ng-container *ngIf="autoGenConfig.testType === 'CHAPTER'; else multiChapter">
+                                    <select [(ngModel)]="sec.chapters" (ngModelChange)="ensureChapterDistribution(sec)"
+                                        class="w-full border rounded px-2 py-1 text-sm">
+                                        <option *ngFor="let ch of getChaptersForSubjects(sec.selectedSubjects)" [value]="ch.id">
+                                            {{ch.subject}} - {{ch.name}}
+                                        </option>
+                                    </select>
+                                </ng-container>
+                                <ng-template #multiChapter>
+                                    <select multiple [(ngModel)]="sec.chapters" (ngModelChange)="ensureChapterDistribution(sec)"
+                                        class="w-full border rounded px-2 py-1 text-sm h-24 focus:ring-1 focus:ring-indigo-500">
+                                        <option *ngFor="let ch of getChaptersForSubjects(sec.selectedSubjects)" [value]="ch.id">
+                                            {{ch.subject}} - {{ch.name}}
+                                        </option>
+                                    </select>
+                                </ng-template>
+                                <p class="text-[10px] text-gray-400 mt-1" *ngIf="autoGenConfig.testType === 'OVERALL'">Hold Ctrl (Windows) or Cmd (Mac) to select multiple chapters.</p>
+                            </div>
+
+                            <!-- Row 4: Question Distribution -->
+                            <div>
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="block text-xs font-medium text-gray-500">Question Type
+                                        Distribution</label>
+                                    <span class="text-xs"
+                                        [ngClass]="{'text-green-600': getDistTotal(sec) === sec.questionCount, 'text-orange-500': getDistTotal(sec) !== sec.questionCount}">
+                                        Total: {{getDistTotal(sec)}} / {{sec.questionCount || 0}}
+                                    </span>
+                                </div>
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-50 p-3 rounded border">
+                                    <div *ngFor="let type of questionTypes" class="flex flex-col gap-1">
+                                        <label class="text-[10px] text-gray-600 uppercase font-bold truncate"
+                                            [title]="type">{{type}}</label>
+                                        <input type="number" [(ngModel)]="sec.typeDistribution[type]" min="0"
+                                            placeholder="0"
+                                            class="w-full border rounded px-2 py-1 text-xs focus:ring-1 focus:ring-indigo-500">
+                                    </div>
+                                </div>
+                                <p class="text-[10px] text-gray-400 mt-1">Sum of types should equal Total Questions. If
+                                    not, MCQs will be adjusted.</p>
+                                <div *ngIf="getDistTotal(sec) !== (sec.questionCount || 0)"
+                                    class="text-xs mt-1 text-orange-600">Warning: type distribution
+                                    ({{getDistTotal(sec)}}) does not match total questions ({{sec.questionCount || 0}}).
+                                </div>
+                                <div *ngIf="sec.selectedSubject && (!sec.chapters || !sec.chapters.length)"
+                                    class="text-xs mt-1 text-red-600">If subject selected, choose at least one chapter
+                                    for this section.</div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-between gap-3 pt-4 border-t items-center">
+                <div class="text-sm text-gray-600">Total Questions across sections: <span
+                        class="font-medium text-gray-800">{{ totalAutoGenQuestions() }}</span></div>
+                                <div *ngIf="showAutoErrors">
+                                    <div *ngFor="let sec of autoGenConfig.sections; let i = index">
+                                        <div *ngIf="!sec.questionCount || sec.questionCount <= 0" class="text-sm text-red-600">Section {{i+1}}: Enter a valid number of questions.</div>
+                                        <div *ngIf="!sec.selectedSubjects || !sec.selectedSubjects.length" class="text-sm text-red-600">Section {{i+1}}: Select at least one subject.</div>
+                                        <div *ngIf="!sec.chapters || !sec.chapters.length" class="text-sm text-red-600">Section {{i+1}}: Select at least one chapter.</div>
+                                        <div *ngIf="getDistTotal(sec) !== (sec.questionCount || 0)" class="text-sm text-orange-600">Section {{i+1}}: Type distribution ({{getDistTotal(sec)}}) does not match total questions ({{sec.questionCount || 0}}).</div>
+                                    </div>
+                                      <div *ngIf="getAutoGenTotalQuestions() <= 0" class="text-sm text-red-600">Total questions across all sections must be greater than 0.</div>
+                                </div>
+                <button [disabled]="isGenerating" (click)="showAutoGenerateModal = false"
+                    class="px-4 py-2 rounded border text-gray-600 hover:bg-gray-50">Cancel</button>
+                <!-- <button (click)="attemptGenerate()"
+                    [disabled]="isGenerating"
+                    class="px-6 py-2 rounded bg-indigo-600 text-white shadow hover:bg-indigo-700 transition-all font-medium text-sm">
+                    <span *ngIf="isGenerating" class="ml-2 text-indigo-200">Generating...</span>
+                    <span *ngIf="!isGenerating">Generate</span>
+                </button> -->
+                <button
+                    [disabled]="true">Generate</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Preview Modal -->
+    <div *ngIf="previewImageUrl" class="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-90"
+        (click)="closePreview()">
+        <div class="relative max-w-4xl max-h-[90vh] p-2">
+            <img [src]="previewImageUrl" class="max-w-full max-h-[85vh] rounded shadow-lg bg-white" alt="Preview"
+                (click)="$event.stopPropagation()">
+            <button class="absolute -top-10 right-0 text-white hover:text-gray-300" (click)="closePreview()">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Passage Modal -->
+    <div *ngIf="showPassageModal && editingPassageSectionIndex >= 0"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-semibold">
+                    {{editingPassage?.passageId ? 'Edit Passage' : 'Add New Passage'}}
+                </h3>
+                <button (click)="closePassageModal()" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <!-- Passage Content (Required) -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Passage Content <span class="text-red-600">*</span>
+                    </label>
+                    <textarea 
+                        [(ngModel)]="editingPassage.content"
+                        class="w-full h-32 rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="Enter the passage text here..."
+                        maxlength="10000">
+                    </textarea>
+                    <p class="text-xs text-gray-500 mt-1">
+                        {{editingPassage?.content?.length || 0}}/10000 characters
+                    </p>
+                </div>
+
+                <!-- Source Attribution (Optional) -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Source Attribution
+                    </label>
+                    <input 
+                        type="text"
+                        [(ngModel)]="editingPassage.sourceAttribution"
+                        class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="e.g., Historical Records, 1820">
+                    <p class="text-xs text-gray-500 mt-1">
+                        Optional: Include the source or attribution for this passage
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
+                <button (click)="closePassageModal()"
+                    class="px-4 py-2 rounded border text-gray-600 hover:bg-gray-50">
+                    Cancel
+                </button>
+                <button (click)="savePassage()"
+                    class="px-6 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 font-medium">
+                    {{editingPassage?.passageId ? 'Update' : 'Create'}} Passage
+                </button>
+            </div>
+        </div>
+    </div>
