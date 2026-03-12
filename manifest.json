@@ -1,0 +1,21 @@
+{
+  "name": "Mentorstreak",
+  "short_name": "Mentorstreak",
+  "description": "AI-powered learning app focused on conceptual mastery with concept checks and a Pomodoro timer.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0A74FF",
+  "icons": [
+    {
+      "src": "/appicon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/appicon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
