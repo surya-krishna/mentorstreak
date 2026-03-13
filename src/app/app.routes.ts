@@ -5,6 +5,9 @@ import { AboutComponent } from './about.component';
 import { ContactComponent } from './contact.component';
 import { BlogPostComponent } from './blog-post.component';
 import { DeleteAccountComponent } from './delete-account.component';
+import { PrivacyPolicyComponent } from './privacy-policy.component';
+import { TermsConditionsComponent } from './terms-conditions.component';
+import { RefundPolicyComponent } from './refund-policy.component';
 import { CreatorLoginComponent } from './creators/creator-login/creator-login.component';
 import { CreatorSignupComponent } from './creators/creator-signup/creator-signup.component';
 import { CreatorDashboardComponent } from './creators/creator-dashboard/creator-dashboard.component';
@@ -18,6 +21,9 @@ export const routes: Routes = [
   { path: 'blog/:id', component: BlogPostComponent },
   { path: 'about', component: AboutComponent },
   { path: 'contact', component: ContactComponent },
+  { path: 'privacy-policy', component: PrivacyPolicyComponent },
+  { path: 'terms-conditions', component: TermsConditionsComponent },
+  { path: 'refund-policy', component: RefundPolicyComponent },
   {
     path: 'delete-account-request',
     component: DeleteAccountComponent

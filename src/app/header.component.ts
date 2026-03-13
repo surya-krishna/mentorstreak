@@ -46,10 +46,23 @@ export class HeaderComponent {
   navigateToSection(section: string) {
     const isHome = this.router.url === '/' || this.router.url === '/#' || this.router.url === '/#/';
     if (isHome) {
-      // If already on home, just update the fragment to scroll
-      window.location.hash = section;
+      // If already on home, scroll to the section
+      setTimeout(() => {
+        const element = document.getElementById(section);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 0);
     } else {
-      this.router.navigate(['/'], { fragment: section });
+      // Navigate to home and then scroll
+      this.router.navigate(['/'], { fragment: section }).then(() => {
+        setTimeout(() => {
+          const element = document.getElementById(section);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 100);
+      });
     }
     this.closeMenu();
   }

@@ -1,5 +1,5 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://www.Mentorstreak.com/sitemap.xml
-Host: https://www.Mentorstreak.com
+Sitemap: https://www.mentorstreak.com/sitemap.xml
+Host: https://www.mentorstreak.com
