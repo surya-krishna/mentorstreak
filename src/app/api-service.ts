@@ -61,6 +61,12 @@ export class ApiService {
     }).pipe(catchError((err) => this.handleError(err)));
   }
 
+  patch<T>(url: string, body: any, authToken?: string): Observable<T> {
+    return this.http.patch<T>(this.baseUrl + url, body, {
+      headers: this.getHeaders(authToken)
+    }).pipe(catchError((err) => this.handleError(err)));
+  }
+
   delete<T>(url: string, params?: any, authToken?: string): Observable<T> {
     return this.http.delete<T>(this.baseUrl + url, {
       headers: this.getHeaders(authToken),

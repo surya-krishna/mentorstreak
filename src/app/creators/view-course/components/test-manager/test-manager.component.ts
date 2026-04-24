@@ -6,6 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../../../api-service';
 import { ModalService } from '../../../../modal.service';
 import { ToastService } from '../../../../toast.service';
+import { AdaptiveApiService, AdaptiveConfig } from '../../../adaptive-api.service';
 
 @Component({
     selector: 'app-test-manager',
@@ -17,21 +18,27 @@ export class TestManagerComponent implements OnInit, OnChanges {
     @Input() courseId: string = '';
     @Input() course: any = null;
     @Input() testId: string | null = null;
-    @Input() action: 'edit' | 'create' | 'auto' | null = null;
+    @Input() action: 'edit' | 'create' | 'adaptive' | null = null;
     @Output() saved = new EventEmitter<void>();
     @Output() cancelled = new EventEmitter<void>();
 
     currentTest: any = null;
     isLoadingDetails: boolean = false;
 
-    // Auto Generate
-    showAutoGenerateModal: boolean = false;
-    autoGenConfig: any = {
-        numSections: 1,
-        sections: []
+    // Adaptive Test Creation
+    showAdaptiveModal = false;
+    adaptiveForm: any = {
+        title: '',
+        instructions: '',
+        adaptive_mode: 'chapter' as 'chapter' | 'mock',
+        source_chapters: [] as string[],
+        question_count: 20,
+        duration_min: 30,
+        difficulty_targets: null as any
     };
-    isGenerating: boolean = false;
-    generationStatus: string = '';
+    adaptiveCourseConfig: AdaptiveConfig | null = null;
+    isSavingAdaptive = false;
+    showAdaptiveErrors = false;
 
     // Image Upload
     isUploadingImage: boolean = false;
@@ -53,7 +60,6 @@ export class TestManagerComponent implements OnInit, OnChanges {
     subjects: string[] = [];
     // Validation flags
     showManualErrors: boolean = false;
-    showAutoErrors: boolean = false;
 
     // For OVERALL tests allow selecting subjects at test level
     // currentTest.selectedSubjects: string[] expected
@@ -66,7 +72,8 @@ export class TestManagerComponent implements OnInit, OnChanges {
     constructor(
         private api: ApiService,
         private modal: ModalService,
-        private toast: ToastService
+        private toast: ToastService,
+        private adaptiveApi: AdaptiveApiService
     ) { }
 
     ngOnInit() {
@@ -87,8 +94,8 @@ export class TestManagerComponent implements OnInit, OnChanges {
         } else if (changes['action']) {
             if (this.action === 'create') {
                 this.initNewTest();
-            } else if (this.action === 'auto') {
-                this.openAutoGenerate();
+            } else if (this.action === 'adaptive') {
+                this.openAdaptiveModal();
             }
         }
     }
@@ -434,35 +441,86 @@ export class TestManagerComponent implements OnInit, OnChanges {
         this.currentTest.chapterId = undefined;
     }
 
-    // Auto Generate
-    openAutoGenerate() {
-        const proceed = () => {
-            this.currentTest = null;
-            this.showAutoGenerateModal = true;
-            this.autoGenConfig = {
-                numSections: 1,
-                sections: [{
-                    name: 'Section 1',
-                    questionCount: 10,
-                    typeDistribution: this.createEmptyTypeDistribution(),
-                    chapters: [],
-                    selectedSubjects: [],
-                    marksPos: 1,
-                    marksNeg: 0,
-                    unattemptedMarks: 0,
-                    timeLimit: 0
-                }]
-            };
-            this.autoGenConfig.sections.forEach((s: any) => this.ensureChapterDistribution(s));
+    // Adaptive Test Creation
+    openAdaptiveModal() {
+        this.currentTest = null;
+        this.showAdaptiveModal = true;
+        this.showAdaptiveErrors = false;
+        this.adaptiveForm = {
+            title: '',
+            instructions: '',
+            adaptive_mode: 'chapter' as 'chapter' | 'mock',
+            source_chapters: [],
+            question_count: this.adaptiveCourseConfig?.default_question_count ?? 20,
+            duration_min: this.adaptiveCourseConfig?.default_duration_min ?? 30,
+            difficulty_targets: null
         };
-
-        if (this.currentTest) {
-            this.modal.confirm('Discard current changes?').then(confirmed => {
-                if (confirmed) proceed();
+        if (!this.adaptiveCourseConfig && this.courseId) {
+            this.adaptiveApi.getAdaptiveConfig(this.courseId).subscribe({
+                next: (res) => {
+                    this.adaptiveCourseConfig = res.adaptive_config;
+                    this.adaptiveForm.question_count = res.adaptive_config.default_question_count;
+                    this.adaptiveForm.duration_min = res.adaptive_config.default_duration_min;
+                },
+                error: () => {}
             });
-        } else {
-            proceed();
         }
+    }
+
+    closeAdaptiveModal() {
+        this.showAdaptiveModal = false;
+        this.action = null;
+    }
+
+    toggleAdaptiveChapter(chapterId: string) {
+        const idx = this.adaptiveForm.source_chapters.indexOf(chapterId);
+        if (idx === -1) this.adaptiveForm.source_chapters.push(chapterId);
+        else this.adaptiveForm.source_chapters.splice(idx, 1);
+    }
+
+    isAdaptiveChapterSelected(chapterId: string): boolean {
+        return this.adaptiveForm.source_chapters.includes(chapterId);
+    }
+
+    adaptiveFormValid(): boolean {
+        return !!(
+            this.adaptiveForm.title?.trim() &&
+            this.adaptiveForm.source_chapters.length > 0 &&
+            this.adaptiveForm.question_count > 0 &&
+            this.adaptiveForm.duration_min > 0
+        );
+    }
+
+    saveAdaptiveTest() {
+        this.showAdaptiveErrors = true;
+        if (!this.adaptiveFormValid()) return;
+        this.isSavingAdaptive = true;
+        const payload: any = {
+            title: this.adaptiveForm.title.trim(),
+            instructions: this.adaptiveForm.instructions,
+            adaptive_mode: this.adaptiveForm.adaptive_mode,
+            source_chapters: this.adaptiveForm.source_chapters,
+            question_count: this.adaptiveForm.question_count,
+            duration_min: this.adaptiveForm.duration_min,
+            status: 'draft'
+        };
+        if (this.adaptiveForm.difficulty_targets) {
+            payload.difficulty_targets = this.adaptiveForm.difficulty_targets;
+        }
+        this.adaptiveApi.createAdaptiveTest(this.courseId, payload).subscribe({
+            next: () => {
+                this.isSavingAdaptive = false;
+                this.showAdaptiveModal = false;
+                this.action = null;
+                this.toast.success('Adaptive test created');
+                this.loadTests();
+                this.saved.emit();
+            },
+            error: (err: any) => {
+                this.isSavingAdaptive = false;
+                this.toast.error(err?.error?.detail || 'Failed to create adaptive test');
+            }
+        });
     }
 
     createEmptyTypeDistribution() {
@@ -470,35 +528,6 @@ export class TestManagerComponent implements OnInit, OnChanges {
         (this.questionTypes || []).forEach((t: string) => map[t] = 0);
         if (map['MCQ'] !== undefined) map['MCQ'] = 10;
         return map;
-    }
-
-    updateAutoGenSections() {
-        const currentLen = this.autoGenConfig.sections.length;
-        const targetLen = this.autoGenConfig.numSections;
-
-        if (targetLen > currentLen) {
-            for (let i = currentLen; i < targetLen; i++) {
-                this.autoGenConfig.sections.push({
-                    name: `Section ${i + 1}`,
-                    questionCount: 10,
-                    typeDistribution: this.createEmptyTypeDistribution(),
-                    chapters: [],
-                    chapterDistribution: {},
-                    marksPos: 1,
-                    marksNeg: 0,
-                    unattemptedMarks: 0,
-                    timeLimit: 0
-                });
-            }
-        } else if (targetLen < currentLen) {
-            this.autoGenConfig.sections.splice(targetLen);
-        }
-    }
-
-    clampQuestionCount(sec: any) {
-        if (!sec) return;
-        sec.questionCount = Math.min(Math.max(Number(sec.questionCount) || 0, 0), 30);
-        this.ensureChapterDistribution(sec);
     }
 
     getChapterName(id: any) {
@@ -577,65 +606,6 @@ export class TestManagerComponent implements OnInit, OnChanges {
         return out;
     }
 
-    generateTest() {
-        this.initNewTest();
-        this.currentTest.title = 'Auto Generated Test';
-        this.currentTest.sections = [];
-
-        this.autoGenConfig.sections.forEach((secCfg: any, idx: number) => {
-            if (!secCfg.typeDistribution) secCfg.typeDistribution = this.createEmptyTypeDistribution();
-            if (!secCfg.chapters) secCfg.chapters = [];
-
-            secCfg.questionCount = Math.min(Number(secCfg.questionCount) || 0, 30);
-
-            const allocation = this.computeAllocation(secCfg);
-            const chapters = secCfg.chapters || [];
-
-            const newSection: any = {
-                name: secCfg.name || `Section ${idx + 1}`,
-                questions: [],
-                useUniformMarking: true,
-                uniformMarksPos: secCfg.marksPos,
-                uniformMarksNeg: secCfg.marksNeg,
-                timeLimit: secCfg.timeLimit || 0,
-                selectedChapters: secCfg.chapters || [],
-                unattemptedMarks: secCfg.unattemptedMarks || 0
-            };
-
-            const makeQuestion = (type: string, ch: any, iNum: number) => ({
-                type,
-                text: `Generated ${type} Question ${iNum + 1} (Chapter: ${ch ? ch.name : 'N/A'})`,
-                options: [{ text: 'Option A', isCorrect: false }, { text: 'Option B', isCorrect: false }],
-                marksPos: secCfg.marksPos,
-                marksNeg: secCfg.marksNeg,
-                pairs: [{ left: '', right: '' }],
-                sequenceItems: [{ text: '', order: 1 }],
-                blanks: [],
-                correctAnswer: '',
-                explanation: '',
-                image: null,
-                chapterId: ch ? ch.id : null
-            });
-
-            // Per-chapter distribution removed: allocate questions by section only
-            Object.keys(allocation).forEach(type => {
-                const count = Number(allocation[type]) || 0;
-                for (let i = 0; i < count; i++) {
-                    newSection.questions.push(makeQuestion(type, null, i));
-                }
-            });
-            this.currentTest.sections.push(newSection);
-        });
-
-        this.showAutoGenerateModal = false;
-        this.action=null;
-        this.toast.success('Test structure generated (draft)');
-    }
-
-    closeAutoGen(){
-        this.showAutoGenerateModal = false;
-        this.cancelled.emit();
-    }
 
     // Image Upload
     triggerImageUpload(question: any) {
@@ -953,35 +923,6 @@ export class TestManagerComponent implements OnInit, OnChanges {
     }
 
 
-    autoGenValid(): boolean {
-        const ag = this.autoGenConfig;
-        if (!ag) return false;
-        if (!(Number(ag.numSections) >= 1)) return false;
-        for (const s of ag.sections) {
-            if (!(Number(s.questionCount) > 0)) return false;
-            // subjects must be selected per user's requirement
-            if (!s.selectedSubjects || !s.selectedSubjects.length) return false;
-            // chapters must be selected
-            if (!s.chapters || !s.chapters.length) return false;
-            // ensure type distribution matches total questions exactly
-            const totalDist = this.getDistTotal(s);
-            if (Number(totalDist) !== Number(s.questionCount)) return false;
-        }
-        // ensure overall questions across sections is > 0
-        if (this.getAutoGenTotalQuestions() <= 0) return false;
-        return true;
-    }
-
-    // Returns total questions across all auto-gen sections
-    getAutoGenTotalQuestions(): number {
-        if (!this.autoGenConfig || !this.autoGenConfig.sections) return 0;
-        return this.autoGenConfig.sections.reduce((acc: number, s: any) => acc + (Number(s.questionCount) || 0), 0);
-    }
-
-    totalAutoGenQuestions(): number {
-        if (!this.autoGenConfig || !this.autoGenConfig.sections) return 0;
-        return this.autoGenConfig.sections.reduce((acc: number, s: any) => acc + (Number(s.questionCount) || 0), 0);
-    }
 
 
 
@@ -992,34 +933,4 @@ export class TestManagerComponent implements OnInit, OnChanges {
         }
     }
 
-    attemptGenerate() {
-        this.showAutoErrors = true;
-        if (!this.autoGenValid()) return;
-        this.isGenerating = true;
-        const payload = {
-            ...this.autoGenConfig,
-            sections: this.autoGenConfig.sections.map((sec: any) => ({
-                ...sec,
-                selectedSubjects: this.autoGenConfig.testType === 'CHAPTER' ? [sec.selectedSubjects] : sec.selectedSubjects,
-                chapters: this.autoGenConfig.testType === 'CHAPTER' ? [sec.chapters] : sec.chapters
-            })),
-            testType: this.autoGenConfig.testType
-        };
-        this.api.post(`/creator/v2/courses/${this.courseId}/auto-generate-test`, payload).subscribe({
-            next: (res: any) => {
-                this.isGenerating = false;
-                this.showAutoGenerateModal = false;
-                this.action= null;
-                this.showAutoGenSuccessPopup();
-            },
-            error: (err: any) => {
-                this.isGenerating = false;
-                this.toast.error('Failed to auto-generate test');
-            }
-        });
-    }
-
-    showAutoGenSuccessPopup() {
-        this.modal.alert('Test generation initiated. Please continue with your next activity.');
-    }
 }

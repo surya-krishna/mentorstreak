@@ -8,6 +8,43 @@
       </div>
     </div>
 
+    <!-- Adaptive testing at a glance -->
+    <div class="bg-white rounded-lg shadow-sm p-4 mb-6 border-l-4 border-indigo-500">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-semibold text-gray-900">Adaptive Testing at a Glance</span>
+          <span *ngIf="adaptiveWidgetLoading" class="text-xs text-gray-400">Loading…</span>
+        </div>
+        <span *ngIf="adaptiveWidget.pendingReview > 0"
+          class="px-2 py-1 bg-amber-100 text-amber-800 text-xs font-medium rounded">
+          {{ adaptiveWidget.pendingReview }} pending review
+        </span>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div>
+          <div class="text-xs text-gray-500">Students engaged</div>
+          <div class="text-xl font-semibold text-gray-900">{{ adaptiveWidget.totalStudents }}</div>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500">Total attempts</div>
+          <div class="text-xl font-semibold text-gray-900">{{ adaptiveWidget.totalAttempts }}</div>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500">Courses with data</div>
+          <div class="text-xl font-semibold text-gray-900">{{ adaptiveWidget.coursesWithData }}</div>
+        </div>
+        <div class="flex items-center">
+          <div *ngIf="adaptiveWidget.pendingReview > 0" class="w-full">
+            <div class="text-xs text-amber-700 font-medium mb-1">AI questions need review</div>
+            <p class="text-xs text-gray-500">Open a course → Question Bank → AI tab to review.</p>
+          </div>
+          <div *ngIf="adaptiveWidget.pendingReview === 0 && !adaptiveWidgetLoading" class="text-xs text-green-700">
+            All questions reviewed
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
       <div *ngIf="loading" class="col-span-full text-center text-gray-500">Loading courses...</div>
       <div *ngIf="errorMessage" class="col-span-full text-center text-red-600">{{ errorMessage }}</div>

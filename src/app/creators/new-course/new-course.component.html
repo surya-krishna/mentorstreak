@@ -21,20 +21,6 @@
             </div>
           </div>
         </div>
-<!-- 
-        <div class="p-4 border rounded-lg bg-white">
-          <div *ngIf="loading" class="flex items-center gap-2 text-sm text-gray-700">Loading... <svg
-              class="w-4 h-4 animate-spin" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none">
-              </circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-            </svg></div>
-          <div *ngIf="!loading && actionMessage" class="text-sm text-gray-700">{{ actionMessage }}</div>
-          <div *ngIf="!loading && !actionMessage" class="text-sm text-gray-500">Progress and server actions show here.
-          </div>
-        </div> -->
-
-        <!-- ...existing code... -->
 
         <!-- Course Meta Data Main Section -->
         <div class="bg-indigo-50 border border-indigo-100 rounded-lg p-4 mb-4 flex flex-wrap gap-8 items-center">
@@ -49,6 +35,55 @@
           <div class="flex flex-col items-center">
             <div class="text-2xl font-bold text-indigo-700">{{ testCount }}</div>
             <div class="text-xs text-gray-600">Tests</div>
+          </div>
+        </div>
+
+        <!-- Step progress guide -->
+        <div class="p-4 border rounded-lg bg-white text-sm">
+          <div class="font-medium text-gray-700 mb-3">Progress</div>
+          <div class="space-y-2 text-xs text-gray-500">
+            <div class="flex items-center gap-2" [class.text-indigo-600]="step === 1" [class.font-semibold]="step === 1">
+              <span [class.text-green-500]="step > 1" [class.text-indigo-600]="step === 1">{{ step > 1 ? '✓' : '1' }}</span>
+              <span>Course — Basic info &amp; settings</span>
+            </div>
+            <div class="flex items-center gap-2" [class.text-indigo-600]="step === 2" [class.font-semibold]="step === 2">
+              <span [class.text-green-500]="step > 2" [class.text-indigo-600]="step === 2">{{ step > 2 ? '✓' : '2' }}</span>
+              <span>Subjects — Organize by topic</span>
+            </div>
+            <div class="flex items-center gap-2" [class.text-indigo-600]="step === 3" [class.font-semibold]="step === 3">
+              <span [class.text-green-500]="step > 3" [class.text-indigo-600]="step === 3">{{ step > 3 ? '✓' : '3' }}</span>
+              <span>Chapters — Add learning content</span>
+            </div>
+            <div class="flex items-center gap-2" [class.text-indigo-600]="step === 4" [class.font-semibold]="step === 4">
+              <span [class.text-green-500]="step > 4" [class.text-indigo-600]="step === 4">{{ step > 4 ? '✓' : '4' }}</span>
+              <span>Preview — Review before publishing</span>
+            </div>
+            <div class="flex items-center gap-2" [class.text-indigo-600]="step === 5" [class.font-semibold]="step === 5">
+              <span [class.text-green-500]="step > 5" [class.text-purple-600]="step === 5">{{ step > 5 ? '✓' : '5' }}</span>
+              <span>Question Bank — Build adaptive pool</span>
+            </div>
+            <div class="flex items-center gap-2" [class.text-indigo-600]="step === 6" [class.font-semibold]="step === 6">
+              <span [class.text-green-500]="step > 6" [class.text-green-600]="step === 6">{{ step > 6 ? '✓' : '6' }}</span>
+              <span>Tests — Create tests for students</span>
+            </div>
+            <div class="flex items-center gap-2" [class.text-indigo-600]="step === 7" [class.font-semibold]="step === 7">
+              <span [class.text-green-500]="step > 7" [class.text-blue-600]="step === 7">{{ step > 7 ? '✓' : '7' }}</span>
+              <span>Analytics — Track performance</span>
+            </div>
+            <div class="flex items-center gap-2" [class.text-indigo-600]="step === 8" [class.font-semibold]="step === 8">
+              <span [class.text-green-500]="step > 8" [class.text-orange-600]="step === 8">{{ step > 8 ? '✓' : '8' }}</span>
+              <span>Publish — Make course live</span>
+            </div>
+          </div>
+          <div *ngIf="step < 8" class="mt-3 pt-3 border-t text-xs text-indigo-600">
+            <span class="font-medium">Next up:</span>
+            <span *ngIf="step === 1"> Add subjects to organise your course.</span>
+            <span *ngIf="step === 2"> Add chapters with video or file content.</span>
+            <span *ngIf="step === 3"> Preview your chapter content.</span>
+            <span *ngIf="step === 4"> Build your question bank for adaptive tests.</span>
+            <span *ngIf="step === 5"> Create tests for students to take.</span>
+            <span *ngIf="step === 6"> Review how students are performing.</span>
+            <span *ngIf="step === 7"> Publish the course to make it available.</span>
           </div>
         </div>
 
@@ -76,8 +111,8 @@
           </div>
         </div>
 
-        <!-- Test List Sidebar (Only visible in Step 5) -->
-        <div *ngIf="stepEquals(5)" class="p-4 border rounded-lg bg-white text-sm text-gray-600">
+        <!-- Test List Sidebar (Only visible in Step 6) -->
+        <div *ngIf="stepEquals(6)" class="p-4 border rounded-lg bg-white text-sm text-gray-600">
           <div class="flex items-center justify-between mb-4">
             <div class="font-medium">Tests</div>
             <div class="relative">
@@ -90,12 +125,17 @@
               </button>
               <!-- Dropdown -->
               <div *ngIf="showNewTestOptions"
-                class="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg border z-10 py-1">
-                <button (click)="openAutoGenerate()"
-                  class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Auto Generate</button>
+                class="absolute right-0 mt-1 w-52 bg-white rounded-md shadow-lg border z-10 py-1">
+                <button (click)="openAdaptiveTestCreate()"
+                  class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                  <span class="font-medium text-purple-700">Adaptive Test</span>
+                  <span class="block text-xs text-gray-400 mt-0.5">AI-personalised per student</span>
+                </button>
                 <button (click)="createNewTest()"
-                  class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Create
-                  Manually</button>
+                  class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                  <span class="font-medium">Manual Test</span>
+                  <span class="block text-xs text-gray-400 mt-0.5">Fixed question list</span>
+                </button>
               </div>
             </div>
           </div>
@@ -107,7 +147,11 @@
               (click)="selectTest(test.id)">
               <div class="font-medium text-gray-900">{{ test.name || 'Untitled Test' }}</div>
               <div class="text-xs text-gray-500 mt-1 flex items-center gap-2">
-                <span class="px-1.5 py-0.5 rounded bg-gray-100">{{ test.type }}</span>
+                <span class="px-1.5 py-0.5 rounded"
+                  [class.bg-purple-100]="test.is_adaptive" [class.text-purple-700]="test.is_adaptive"
+                  [class.bg-gray-100]="!test.is_adaptive">
+                  {{ test.is_adaptive ? 'ADAPTIVE' : test.type }}
+                </span>
               </div>
               <button (click)="$event.stopPropagation(); deleteTest(i)"
                 class="absolute top-2 right-2 p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -118,8 +162,8 @@
                 </svg>
               </button>
             </div>
-            <div *ngIf="tests.length === 0" class="text-center py-8 text-gray-400 italic">
-              No tests created yet.
+            <div *ngIf="tests.length === 0" class="text-center py-6 text-gray-400 italic text-xs">
+              No tests yet. Use the + New button to create one.
             </div>
           </div>
         </div>
@@ -128,22 +172,47 @@
       <!-- Main Content -->
       <div class="space-y-4" style="min-width:0;">
         <!-- Stepper -->
-        <div class="flex items-center gap-4 mb-2 overflow-x-auto pb-2">
+        <div class="flex items-center gap-2 mb-2 overflow-x-auto pb-2">
           <ng-container
-            *ngFor="let label of ['Course','Subjects','Chapters','Preview','Tests','Publish']; let idx = index">
-            <div class="flex items-center gap-3 group cursor-pointer" (click)="setStep(idx + 1)">
-              <div class="w-9 h-9 flex items-center justify-center rounded-full font-medium transition-all duration-300"
-                [ngClass]="{ 'bg-indigo-600 text-white shadow hover:bg-indigo-700 transition-all duration-200 transform hover:scale-105 shadow-md scale-110': step === (idx+1), 'bg-gray-100 text-gray-700 group-hover:bg-gray-200': step !== (idx+1) }">
-                {{ idx+1 }}</div>
-              <div class="text-sm font-medium transition-colors duration-300 whitespace-nowrap"
-                [class.text-indigo-600]="step === (idx+1)" [class.font-bold]="step === (idx+1)">{{ label }}</div>
+            *ngFor="let item of [
+              {label:'Course', sub:'Basic info'},
+              {label:'Subjects', sub:'Organize'},
+              {label:'Chapters', sub:'Content'},
+              {label:'Preview', sub:'Review'},
+              {label:'Question Bank', sub:'Adaptive pool'},
+              {label:'Tests', sub:'Assessments'},
+              {label:'Analytics', sub:'Performance'},
+              {label:'Publish', sub:'Go live'}
+            ]; let idx = index">
+            <div class="flex items-center gap-2 group cursor-pointer flex-shrink-0" (click)="setStep(idx + 1)">
+              <div class="w-8 h-8 flex items-center justify-center rounded-full font-medium text-sm transition-all duration-300"
+                [ngClass]="{
+                  'bg-indigo-600 text-white shadow scale-110': step === (idx+1),
+                  'bg-green-100 text-green-700': step > (idx+1),
+                  'bg-gray-100 text-gray-500 group-hover:bg-gray-200': step < (idx+1)
+                }">
+                <span *ngIf="step > (idx+1)">✓</span>
+                <span *ngIf="step <= (idx+1)">{{ idx+1 }}</span>
+              </div>
+              <div class="hidden md:block">
+                <div class="text-xs font-medium transition-colors duration-300 whitespace-nowrap"
+                  [class.text-indigo-600]="step === (idx+1)" [class.font-bold]="step === (idx+1)"
+                  [class.text-green-600]="step > (idx+1)" [class.text-gray-500]="step < (idx+1)">{{ item.label }}</div>
+                <div class="text-xs text-gray-400 whitespace-nowrap">{{ item.sub }}</div>
+              </div>
             </div>
-            <div *ngIf="idx < 5" class="flex-1 h-0.5 bg-gray-200 min-w-[20px]"></div>
+            <div *ngIf="idx < 7" class="flex-1 h-0.5 min-w-[12px]"
+              [class.bg-indigo-300]="step > (idx+1)"
+              [class.bg-gray-200]="step <= (idx+1)"></div>
           </ng-container>
         </div>
 
 
         <!-- Step 1: Course Info -->
+        <div *ngIf="stepEquals(1)" class="border-l-4 border-indigo-400 pl-4 py-1 mb-4 bg-indigo-50 rounded-r-lg pr-4">
+          <p class="text-sm font-semibold text-indigo-800">Step 1: Course Info</p>
+          <p class="text-xs text-indigo-600 mt-0.5">Set the course name, description, thumbnail and pricing.</p>
+        </div>
         <app-course-info *ngIf="stepEquals(1)" [course]="course" [loading]="loading" [courseDirty]="courseDirty"
           [thumbnailPreview]="thumbnailPreview" (courseChange)="onCourseChange()" (save)="isNewCourse ? createNewCourse() : saveCourse()"
           (continue)="isNewCourse ? createNewCourse() : setStep(2)" (validityChange)="onCourseValidityChange($event)">
@@ -151,22 +220,32 @@
 
 
         <!-- Step 2: Subjects -->
+        <div *ngIf="stepEquals(2)" class="border-l-4 border-indigo-400 pl-4 py-1 mb-4 bg-indigo-50 rounded-r-lg pr-4">
+          <p class="text-sm font-semibold text-indigo-800">Step 2: Subjects</p>
+          <p class="text-xs text-indigo-600 mt-0.5">Group your course content into subjects (also called books). Each subject can contain multiple chapters.</p>
+        </div>
         <app-subject-manager *ngIf="stepEquals(2)" [course]="course" [loading]="loading" [courseDirty]="courseDirty"
           (courseChange)="onCourseChange()" (save)="saveSubjects()" (back)="setStep(1)" (continue)="setStep(3)"
           (validityChange)="onSubjectsValidityChange($event)">
         </app-subject-manager>
 
         <!-- Step 3: Chapters -->
+        <div *ngIf="stepEquals(3)" class="border-l-4 border-indigo-400 pl-4 py-1 mb-4 bg-indigo-50 rounded-r-lg pr-4">
+          <p class="text-sm font-semibold text-indigo-800">Step 3: Chapters</p>
+          <p class="text-xs text-indigo-600 mt-0.5">Add video or file content for each chapter. Students watch/read these before taking tests.</p>
+        </div>
         <app-chapter-manager *ngIf="stepEquals(3)" [course]="course" [loading]="loading" [courseDirty]="courseDirty"
           (courseChange)="onCourseChange()" (save)="saveChapters()" (back)="setStep(2)" (continue)="setStep(4)"
           (validityChange)="onChaptersValidityChange($event)" (uploadChapter)="onChapterFileUpload($event)">
         </app-chapter-manager>
 
         <!-- Step 4: Preview -->
+        <div *ngIf="stepEquals(4)" class="border-l-4 border-indigo-400 pl-4 py-1 mb-4 bg-indigo-50 rounded-r-lg pr-4">
+          <p class="text-sm font-semibold text-indigo-800">Step 4: Preview &amp; Edit Content</p>
+          <p class="text-xs text-indigo-600 mt-0.5">Select a chapter from the sidebar to preview and edit its written content.</p>
+        </div>
         <div *ngIf="stepEquals(4)" class="space-y-4">
           <div class="prose max-w-none">
-            <p class="text-sm">Select a chapter from the sidebar to preview its content.</p>
-            <!-- Content preview logic with markdown-aware Quill editor -->
             <div *ngIf="selectedChapter !== null" class="space-y-3">
               <div class="flex items-center justify-between">
                 <div class="text-sm text-gray-600">Editing: {{ selectedChapterName }}</div>
@@ -179,41 +258,74 @@
 
               <quill-editor [styles]="{height: '300px'}" [(ngModel)]="editorContentHtml" [modules]="quillModules"
                 (onContentChanged)="onQuillChange($event)" (onEditorCreated)="onEditorCreated($event)"></quill-editor>
-                
-                
             </div>
-            <div *ngIf="selectedChapter === null">
-              <p class="text-xs text-gray-500">No chapter selected. Choose one from the sidebar to preview and
-                edit.
-              </p>
+            <div *ngIf="selectedChapter === null" class="text-center py-12 text-gray-400">
+              <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+              </svg>
+              <p class="text-sm font-medium text-gray-500">No chapter selected</p>
+              <p class="text-xs text-gray-400 mt-1">Choose a chapter from the sidebar to preview and edit its content.</p>
             </div>
           </div>
-
-          <!-- <div class="text-xs text-gray-600">Units: {{countUnits()}} / {{maxUnits}}</div> -->
+          <div class="flex gap-2 mt-4">
+            <button class="py-2 px-4 rounded border text-gray-600 hover:bg-gray-50" (click)="setStep(3)">Back</button>
+            <button class="py-2 px-4 rounded bg-indigo-600 text-white hover:bg-indigo-700" (click)="setStep(5)">Continue to Question Bank</button>
+          </div>
         </div>
 
-        <!-- Step 5: Tests -->
-        <app-test-manager *ngIf="stepEquals(5)" [courseId]="courseId" [course]="course" [testId]="selectedTestId"
+        <!-- Step 5: Question Bank -->
+        <div *ngIf="stepEquals(5)" class="border-l-4 border-purple-400 pl-4 py-1 mb-4 bg-purple-50 rounded-r-lg pr-4">
+          <p class="text-sm font-semibold text-purple-800">Step 5: Question Bank</p>
+          <p class="text-xs text-purple-600 mt-0.5">Build the pool of questions that power your adaptive tests. Add manually, generate with AI, or import from CSV.</p>
+        </div>
+        <app-question-bank-manager *ngIf="stepEquals(5)"
+          [courseId]="courseId"
+          [course]="course"
+          (back)="setStep(4)"
+          (continue)="setStep(6)">
+        </app-question-bank-manager>
+
+        <!-- Step 6: Tests -->
+        <div *ngIf="stepEquals(6)" class="border-l-4 border-green-400 pl-4 py-1 mb-4 bg-green-50 rounded-r-lg pr-4">
+          <p class="text-sm font-semibold text-green-800">Step 6: Tests</p>
+          <p class="text-xs text-green-700 mt-0.5">Create tests for students. Choose <strong>Adaptive Test</strong> for AI-personalised assessments, or <strong>Manual Test</strong> for a fixed question list.</p>
+        </div>
+        <app-test-manager *ngIf="stepEquals(6)" [courseId]="courseId" [course]="course" [testId]="selectedTestId"
           [action]="testAction" (saved)="onTestSaved()" (cancelled)="onTestCancelled()">
         </app-test-manager>
 
-        <!-- Step 6: Publish -->
-        <div *ngIf="stepEquals(6)" class="space-y-4">
+        <!-- Step 7: Analytics -->
+        <div *ngIf="stepEquals(7)" class="border-l-4 border-blue-400 pl-4 py-1 mb-4 bg-blue-50 rounded-r-lg pr-4">
+          <p class="text-sm font-semibold text-blue-800">Step 7: Adaptive Analytics</p>
+          <p class="text-xs text-blue-600 mt-0.5">See how students are performing on adaptive tests — ability scores, weak topics, question health. Data populates once students start taking tests.</p>
+        </div>
+        <app-adaptive-analytics *ngIf="stepEquals(7)"
+          [courseId]="courseId"
+          [course]="course"
+          (back)="setStep(6)"
+          (continue)="setStep(8)">
+        </app-adaptive-analytics>
+
+        <!-- Step 8: Publish -->
+        <div *ngIf="stepEquals(8)" class="border-l-4 border-orange-400 pl-4 py-1 mb-4 bg-orange-50 rounded-r-lg pr-4">
+          <p class="text-sm font-semibold text-orange-800">Step 8: Publish</p>
+          <p class="text-xs text-orange-600 mt-0.5">Review your course packages and publish to make it visible to enrolled students.</p>
+        </div>
+        <div *ngIf="stepEquals(8)" class="space-y-4">
           <section class="mt-8" id="publish-section">
             <h2 class="text-xl font-semibold mb-4">Publish</h2>
             <app-package-manager [packages]="packages" [course]="course"
               (packagesChange)="packages = $event"></app-package-manager>
             <div class="flex gap-2 mt-4">
-              <button class="py-2 px-4 rounded border" (click)="setStep(5)">Back</button>
+              <button class="py-2 px-4 rounded border" (click)="setStep(7)">Back</button>
               <button *ngIf="course.status === 'active'" (click)="unpublish()"
                 class="py-2 px-6 rounded bg-yellow-600 text-white shadow hover:bg-yellow-700">Unpublish</button>
-              <button *ngIf="stepEquals(6) && course.status !== 'active'" (click)="confirmPublish()"
+              <button *ngIf="stepEquals(8) && course.status !== 'active'" (click)="confirmPublish()"
                 class="py-2 px-6 rounded bg-green-600 text-white shadow hover:bg-green-700">Publish Course</button>
             </div>
           </section>
         </div>
 
-        <!-- ...existing code for main content (stepper, steps, etc.)... -->
       </div>
     </div>
   </div>

@@ -1,0 +1,538 @@
+<div class="space-y-4 p-4 border rounded-lg bg-white">
+  <!-- What is the Question Bank? info banner -->
+  <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3">
+    <svg class="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+      <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+    </svg>
+    <div>
+      <p class="text-sm font-semibold text-blue-800">What is the Question Bank?</p>
+      <p class="text-sm text-blue-700 mt-1">
+        The question bank powers <strong>adaptive tests</strong>. Students are never shown a fixed list — questions are
+        selected dynamically based on each student's ability level. Build and review your bank here before creating
+        adaptive tests. Chapters need <strong>≥30 reviewed questions</strong> to be included in adaptive tests.
+      </p>
+    </div>
+  </div>
+
+  <div class="flex items-center justify-between">
+    <div>
+      <h3 class="font-semibold text-lg">Question Bank</h3>
+      <p class="text-sm text-gray-500">Manage the pool that powers adaptive tests for this course.</p>
+    </div>
+    <div class="text-sm text-gray-600 flex gap-3" *ngIf="stats">
+      <span><strong>{{ stats.total_questions }}</strong> total</span>
+      <span *ngIf="pending"><strong class="text-amber-600">{{ pending.total_pending }}</strong> pending review</span>
+    </div>
+  </div>
+
+  <!-- Health strip -->
+  <div *ngIf="stats && stats.chapters?.length" class="flex flex-wrap gap-2">
+    <div
+      *ngFor="let c of stats.chapters"
+      [class.bg-amber-50]="!c.sufficient"
+      [class.border-amber-300]="!c.sufficient"
+      [class.bg-green-50]="c.sufficient"
+      [class.border-green-300]="c.sufficient"
+      class="px-3 py-1.5 border rounded-lg text-xs flex items-center gap-2"
+      [title]="c.sufficient ? 'This chapter has enough reviewed questions for adaptive tests' : 'Needs ≥30 reviewed questions before it can be included in adaptive tests'"
+    >
+      <span class="font-medium">{{ c.chapter_name }}</span>
+      <span [class.text-amber-700]="!c.sufficient" [class.text-green-700]="c.sufficient">
+        {{ c.total }} Qs {{ c.sufficient ? '✓' : ' · needs ≥30' }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="border-b flex gap-4">
+    <button
+      *ngFor="let t of [{k:'browse',l:'Browse & Manage'},{k:'ai',l:'AI Generation & Review'},{k:'csv',l:'CSV Import'},{k:'config',l:'Adaptive Config'}]"
+      (click)="selectTab($any(t.k))"
+      [class.border-indigo-600]="tab === t.k"
+      [class.text-indigo-700]="tab === t.k"
+      [class.border-transparent]="tab !== t.k"
+      [class.text-gray-500]="tab !== t.k"
+      class="pb-2 border-b-2 text-sm font-medium"
+    >
+      {{ t.l }}
+    </button>
+  </div>
+
+  <!-- ========== BROWSE ========== -->
+  <section *ngIf="tab === 'browse'" class="space-y-3">
+    <div class="grid grid-cols-2 md:grid-cols-6 gap-2">
+      <select [(ngModel)]="filters.chapter_id" class="rounded border px-2 py-1.5 text-sm col-span-2">
+        <option value="">All chapters</option>
+        <option *ngFor="let c of chapters" [value]="c.id">{{ c.book_name }} · {{ c.name }}</option>
+      </select>
+      <select [(ngModel)]="filters.difficulty" class="rounded border px-2 py-1.5 text-sm">
+        <option [ngValue]="null">Any difficulty</option>
+        <option *ngFor="let d of difficulties" [ngValue]="d">Level {{ d }}</option>
+      </select>
+      <select [(ngModel)]="filters.bloom_level" class="rounded border px-2 py-1.5 text-sm">
+        <option value="">Any Bloom level</option>
+        <option *ngFor="let b of bloomLevels" [value]="b">{{ b }}</option>
+      </select>
+      <input
+        [(ngModel)]="filters.topic"
+        placeholder="Topic tag"
+        class="rounded border px-2 py-1.5 text-sm"
+      />
+      <div class="flex gap-1">
+        <button (click)="applyFilters()" class="flex-1 bg-indigo-600 text-white text-sm rounded px-3 py-1.5">Apply</button>
+        <button (click)="clearFilters()" class="bg-gray-100 text-gray-700 text-sm rounded px-3 py-1.5">Clear</button>
+      </div>
+    </div>
+
+    <div class="flex justify-between items-center">
+      <div class="text-sm text-gray-600">
+        {{ totalQuestions }} results · page {{ filters.page }}
+      </div>
+      <button (click)="startAdd()" class="bg-emerald-600 text-white text-sm rounded px-3 py-1.5">+ Add question</button>
+    </div>
+
+    <!-- Add form -->
+    <div *ngIf="addingQuestion" class="p-3 border rounded bg-emerald-50 space-y-2">
+      <div class="grid grid-cols-2 gap-2">
+        <select [(ngModel)]="newQuestion.chapter_id" class="rounded border px-2 py-1.5 text-sm">
+          <option value="">Select chapter…</option>
+          <option *ngFor="let c of chapters" [value]="c.id">{{ c.book_name }} · {{ c.name }}</option>
+        </select>
+        <select [(ngModel)]="newQuestion.difficulty" class="rounded border px-2 py-1.5 text-sm">
+          <option *ngFor="let d of difficulties" [ngValue]="d">Difficulty {{ d }}</option>
+        </select>
+        <select [(ngModel)]="newQuestion.bloom_level" class="rounded border px-2 py-1.5 text-sm">
+          <option *ngFor="let b of bloomLevels" [value]="b">{{ b }}</option>
+        </select>
+        <input [(ngModel)]="newQuestion.estimated_time_seconds" type="number" class="rounded border px-2 py-1.5 text-sm" placeholder="Est. seconds" />
+      </div>
+      <textarea [(ngModel)]="newQuestion.text" placeholder="Question text" class="w-full rounded border px-2 py-1.5 text-sm" rows="2"></textarea>
+      <div class="grid grid-cols-2 gap-2">
+        <input *ngFor="let o of newQuestion.options; let i = index" [(ngModel)]="o.text" [placeholder]="'Option ' + (i + 1)" class="rounded border px-2 py-1.5 text-sm" />
+      </div>
+      <input [(ngModel)]="newQuestion.correctAnswer" placeholder="Correct option text (must match one option exactly)" class="w-full rounded border px-2 py-1.5 text-sm" />
+      <textarea [(ngModel)]="newQuestion.explanation" placeholder="Explanation" class="w-full rounded border px-2 py-1.5 text-sm" rows="2"></textarea>
+      <div class="flex justify-end gap-2">
+        <button (click)="cancelAdd()" class="bg-gray-100 text-sm rounded px-3 py-1.5">Cancel</button>
+        <button (click)="saveAdd()" class="bg-emerald-600 text-white text-sm rounded px-3 py-1.5">Save</button>
+      </div>
+    </div>
+
+    <div class="overflow-auto border rounded">
+      <table class="min-w-full text-sm">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-3 py-2 text-left">Question</th>
+            <th class="px-3 py-2">Chapter</th>
+            <th class="px-3 py-2 cursor-help" title="Difficulty: 1 = Easiest, 5 = Hardest. Set by the creator; p-value reflects actual student performance.">Diff ⓘ</th>
+            <th class="px-3 py-2 cursor-help" title="Bloom's Taxonomy level: remember → understand → apply → analyze → evaluate → create. Higher levels test deeper thinking.">Bloom ⓘ</th>
+            <th class="px-3 py-2 cursor-help" title="Source: manual = added by you, ai_generated = created by AI (must be reviewed before serving), csv = imported from CSV.">Source ⓘ</th>
+            <th class="px-3 py-2 cursor-help" title="Times served: how many times this question has been shown to students in adaptive tests.">Served ⓘ</th>
+            <th class="px-3 py-2 cursor-help" title="p-value: probability a student answers correctly. Low = harder in practice. Range 0–1. Color coded: red &lt;0.2 too hard, green 0.6–0.8 ideal, red &gt;0.8 too easy.">p-val ⓘ</th>
+            <th class="px-3 py-2"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let q of questions; trackBy: trackByQid" class="border-t">
+            <td class="px-3 py-2 max-w-md truncate" [title]="q.text"><app-latex-text [text]="q.text" /></td>
+            <td class="px-3 py-2 text-gray-500 text-xs">{{ chapterName(q.chapter_id) }}</td>
+            <td class="px-3 py-2 text-center">{{ q.difficulty }}</td>
+            <td class="px-3 py-2 text-center text-xs">{{ q.bloom_level }}</td>
+            <td class="px-3 py-2 text-center">
+              <span
+                [class.bg-purple-100]="q.source === 'ai_generated'"
+                [class.text-purple-700]="q.source === 'ai_generated'"
+                [class.bg-gray-100]="q.source === 'manual'"
+                [class.bg-amber-100]="q.source === 'csv'"
+                [class.text-amber-700]="q.source === 'csv'"
+                class="text-xs px-2 py-0.5 rounded"
+              >
+                {{ q.source || 'manual' }}
+                <span *ngIf="q.reviewed === false">·unreviewed</span>
+              </span>
+            </td>
+            <td class="px-3 py-2 text-center text-xs">{{ q.times_served || 0 }}</td>
+            <td class="px-3 py-2 text-center">
+              <span *ngIf="q.p_value != null" [class]="'text-xs px-2 py-0.5 rounded ' + pValueBadge(q.p_value)">{{ q.p_value | number:'1.2-2' }}</span>
+              <span *ngIf="q.p_value == null" class="text-gray-400 text-xs">—</span>
+            </td>
+            <td class="px-3 py-2 text-right">
+              <button (click)="startEdit(q)" class="text-indigo-600 text-xs mr-2">Edit</button>
+              <button (click)="deleteQuestion(q)" class="text-rose-600 text-xs">Delete</button>
+            </td>
+          </tr>
+          <tr *ngIf="!questions.length && !loading">
+            <td colspan="8" class="px-3 py-10 text-center">
+              <svg class="w-10 h-10 mx-auto text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+              </svg>
+              <p class="text-sm font-medium text-gray-500">Your question bank is empty</p>
+              <p class="text-xs text-gray-400 mt-1">Add questions manually, import from CSV, or generate with AI to get started.</p>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="flex justify-between">
+      <button (click)="prevPage()" [disabled]="filters.page === 1" class="text-sm text-indigo-600 disabled:text-gray-400">← Prev</button>
+      <button (click)="nextPage()" [disabled]="filters.page * filters.limit >= totalQuestions" class="text-sm text-indigo-600 disabled:text-gray-400">Next →</button>
+    </div>
+
+    <!-- Edit drawer (inline) -->
+    <div *ngIf="editingQuestion" class="p-3 border rounded bg-indigo-50 space-y-2">
+      <div class="flex justify-between items-center">
+        <strong class="text-sm">Edit question</strong>
+        <button (click)="cancelEdit()" class="text-gray-500 text-sm">×</button>
+      </div>
+      <textarea [(ngModel)]="editingQuestion.text" class="w-full rounded border px-2 py-1.5 text-sm" rows="2"></textarea>
+      <div class="grid grid-cols-2 gap-2">
+        <input *ngFor="let o of editingQuestion.options; let i = index" [(ngModel)]="o.text" [placeholder]="'Option ' + (i + 1)" class="rounded border px-2 py-1.5 text-sm" />
+      </div>
+      <input [(ngModel)]="editingQuestion.correctAnswer" placeholder="Correct option text" class="w-full rounded border px-2 py-1.5 text-sm" />
+      <textarea [(ngModel)]="editingQuestion.explanation" class="w-full rounded border px-2 py-1.5 text-sm" rows="2"></textarea>
+      <div class="grid grid-cols-3 gap-2">
+        <select [(ngModel)]="editingQuestion.difficulty" class="rounded border px-2 py-1.5 text-sm">
+          <option *ngFor="let d of difficulties" [ngValue]="d">Difficulty {{ d }}</option>
+        </select>
+        <select [(ngModel)]="editingQuestion.bloom_level" class="rounded border px-2 py-1.5 text-sm">
+          <option *ngFor="let b of bloomLevels" [value]="b">{{ b }}</option>
+        </select>
+        <input [(ngModel)]="editingQuestion.estimated_time_seconds" type="number" class="rounded border px-2 py-1.5 text-sm" />
+      </div>
+      <div class="flex justify-end gap-2">
+        <button (click)="cancelEdit()" class="bg-gray-100 text-sm rounded px-3 py-1.5">Cancel</button>
+        <button (click)="saveEdit()" class="bg-indigo-600 text-white text-sm rounded px-3 py-1.5">Save</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== AI ========== -->
+  <section *ngIf="tab === 'ai'" class="space-y-4">
+    <!-- AI workflow info -->
+    <div class="bg-purple-50 border border-purple-200 rounded-lg p-4 flex gap-3">
+      <svg class="w-5 h-5 text-purple-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+      </svg>
+      <div class="text-sm text-purple-800">
+        <p class="font-semibold">How AI generation works</p>
+        <p class="mt-1">Gemini reads your chapter content and generates multiple-choice questions. Generated questions go into a <strong>review queue</strong> — they are <strong>not shown to students until you approve them</strong>. Review, edit if needed, then approve or reject.</p>
+      </div>
+    </div>
+
+    <div class="p-3 border rounded bg-purple-50">
+      <h4 class="font-semibold text-sm mb-2">Generate questions with Gemini</h4>
+      <p class="text-xs text-gray-600 mb-2">Pick chapters with content uploaded. Generated questions land in the review queue below.</p>
+      <div class="flex flex-wrap gap-2 mb-2">
+        <button
+          *ngFor="let c of chapters"
+          (click)="toggleAiChapter(c.id)"
+          [class.bg-purple-600]="aiChapterSelected(c.id)"
+          [class.text-white]="aiChapterSelected(c.id)"
+          [class.bg-white]="!aiChapterSelected(c.id)"
+          class="text-xs px-2 py-1 rounded border"
+        >
+          {{ c.book_name }} · {{ c.name }}
+        </button>
+      </div>
+      <div class="grid grid-cols-4 gap-2 items-end">
+        <label class="text-xs">
+          Per chapter
+          <input [(ngModel)]="aiRequest.questions_per_chapter" type="number" min="5" max="100" class="w-full rounded border px-2 py-1.5 text-sm" />
+        </label>
+        <label class="text-xs">
+          Easy
+          <input [(ngModel)]="aiRequest.distribution.easy" type="number" min="0" class="w-full rounded border px-2 py-1.5 text-sm" />
+        </label>
+        <label class="text-xs">
+          Medium
+          <input [(ngModel)]="aiRequest.distribution.medium" type="number" min="0" class="w-full rounded border px-2 py-1.5 text-sm" />
+        </label>
+        <label class="text-xs">
+          Hard
+          <input [(ngModel)]="aiRequest.distribution.hard" type="number" min="0" class="w-full rounded border px-2 py-1.5 text-sm" />
+        </label>
+      </div>
+      <button
+        (click)="generate()"
+        [disabled]="generating"
+        class="mt-3 bg-purple-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50"
+      >
+        {{ generating ? 'Generating…' : 'Generate ' + aiRequest.chapter_ids.length * aiRequest.questions_per_chapter + ' questions' }}
+      </button>
+    </div>
+
+    <div *ngIf="pending" class="space-y-2">
+      <div class="flex items-center justify-between">
+        <h4 class="font-semibold text-sm" title="AI-generated questions awaiting your review. Only approved questions are served to students.">Pending review ({{ pending.total_pending }}) ⓘ</h4>
+        <div *ngIf="selectedCount > 0" class="flex gap-2">
+          <button (click)="bulkReviewSelected('approve')" class="bg-emerald-600 text-white text-xs rounded px-3 py-1.5">Approve {{ selectedCount }}</button>
+          <button (click)="bulkReviewSelected('reject')" class="bg-rose-600 text-white text-xs rounded px-3 py-1.5">Reject {{ selectedCount }}</button>
+        </div>
+      </div>
+
+      <div *ngIf="!pending.chapters.length" class="text-center py-8">
+        <svg class="w-10 h-10 mx-auto text-green-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <p class="text-sm font-medium text-gray-500">All caught up!</p>
+        <p class="text-xs text-gray-400 mt-1">No AI questions are waiting for review. Generate more questions above.</p>
+      </div>
+
+      <div *ngFor="let group of pending.chapters" class="border rounded bg-white">
+        <div class="flex items-center justify-between px-3 py-2 bg-gray-50 border-b">
+          <div class="text-sm font-medium">{{ group.chapter_name }} <span class="text-gray-500">({{ group.questions.length }})</span></div>
+          <div class="flex gap-2">
+            <button (click)="bulkReviewChapter(group.chapter_id, 'approve')" class="text-emerald-700 text-xs border border-emerald-300 rounded px-2 py-1">Approve all</button>
+            <button (click)="bulkReviewChapter(group.chapter_id, 'reject')" class="text-rose-700 text-xs border border-rose-300 rounded px-2 py-1">Reject all</button>
+          </div>
+        </div>
+        <div class="divide-y">
+          <div *ngFor="let q of group.questions" class="p-3 flex gap-3">
+            <input type="checkbox" [checked]="selectedPending[qid(q)]" (change)="toggleSelected(q)" class="mt-1" />
+            <div class="flex-1 space-y-1">
+              <div class="text-sm"><app-latex-text [text]="q.text" /></div>
+              <ul class="text-xs text-gray-600 space-y-0.5">
+                <li *ngFor="let o of q.options" [class.font-semibold]="o.isCorrect" [class.text-emerald-700]="o.isCorrect">
+                  {{ o.isCorrect ? '✓ ' : '   ' }}<app-latex-text [text]="o.text" />
+                </li>
+              </ul>
+              <div *ngIf="q.explanation" class="text-xs text-gray-500 italic"><app-latex-text [text]="q.explanation" /></div>
+              <div class="text-xs text-gray-500">Difficulty {{ q.difficulty }} · {{ q.bloom_level }} · {{ q.topic_tags?.join(', ') }}</div>
+            </div>
+            <div class="flex flex-col gap-1 min-w-[90px]">
+              <button (click)="reviewSingle(q, 'approve')" class="bg-emerald-600 text-white text-xs rounded px-2 py-1" title="Approve: adds this question to the active pool — students can now be served it">Approve</button>
+              <button (click)="reviewSingle(q, 'reject')" class="bg-rose-600 text-white text-xs rounded px-2 py-1" title="Reject: removes from the active pool but keeps for audit. Students will never see it.">Reject</button>
+              <button (click)="regenerate(q)" class="bg-gray-200 text-xs rounded px-2 py-1" title="Ask AI to generate a replacement question for this chapter and difficulty level">Regenerate</button>
+              <button (click)="startEdit(q)" class="text-indigo-600 text-xs">Edit</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== CSV ========== -->
+  <section *ngIf="tab === 'csv'" class="space-y-3">
+    <!-- CSV info -->
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 flex gap-3">
+      <svg class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+      </svg>
+      <div class="text-sm text-amber-800">
+        <p class="font-semibold">Bulk import from CSV</p>
+        <p class="mt-1">Prepare questions in a spreadsheet and import them all at once. Download the template to see the required columns. Click <strong>Validate</strong> first to check for errors before importing.</p>
+      </div>
+    </div>
+    <div class="p-3 border rounded bg-amber-50">
+      <h4 class="font-semibold text-sm">Bulk CSV import</h4>
+      <p class="text-xs text-gray-600 mt-1">
+        Required columns:
+        <span title="Question format: MCQ (multiple choice)">type</span>,
+        <span title="The question text shown to the student">text</span>,
+        <span title="ID of the chapter this question belongs to — find chapter IDs in the Browse tab">chapter_id</span>,
+        <span title="Numeric difficulty 1–5 (1=easiest, 5=hardest) set by the creator">difficulty</span>,
+        <span title="Bloom's Taxonomy level: remember / understand / apply / analyze / evaluate / create">bloom_level</span>,
+        <span title="The exact text of the correct answer option">correctAnswer</span>.
+        Options can be pipe-separated or JSON.
+      </p>
+      <div class="mt-2 flex gap-2">
+        <button (click)="downloadCsvTemplate()" class="text-xs border rounded px-3 py-1.5">Download template</button>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <input type="file" accept=".csv" (change)="onCsvPicked($event)" class="text-sm" />
+      <button (click)="csvDryRun()" [disabled]="!csvFile || csvUploading" class="bg-gray-700 text-white text-sm rounded px-3 py-1.5 disabled:opacity-50">Validate</button>
+      <button
+        (click)="csvImport()"
+        [disabled]="!csvFile || csvUploading || (csvResult && csvResult.valid_rows === 0)"
+        class="bg-emerald-600 text-white text-sm rounded px-3 py-1.5 disabled:opacity-50"
+      >
+        Import valid rows
+      </button>
+    </div>
+
+    <div *ngIf="csvResult" class="border rounded overflow-hidden">
+      <div class="px-3 py-2 bg-gray-50 border-b text-sm flex justify-between items-center">
+        <div>
+          <strong>{{ csvResult.valid_rows }}</strong> valid · <strong class="text-rose-700">{{ csvResult.invalid_rows }}</strong> invalid · total {{ csvResult.total_rows }}
+          <span *ngIf="csvResult.inserted_count" class="text-emerald-700">· inserted {{ csvResult.inserted_count }}</span>
+        </div>
+        <button *ngIf="csvResult.invalid_rows" (click)="downloadErrorReport()" class="text-xs text-rose-700 border border-rose-300 rounded px-2 py-1">Download errors</button>
+      </div>
+      <table class="min-w-full text-xs">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-3 py-1.5 text-left">Row</th>
+            <th class="px-3 py-1.5 text-left">Status</th>
+            <th class="px-3 py-1.5 text-left">Errors</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of csvResult.rows" class="border-t">
+            <td class="px-3 py-1.5">{{ r.row }}</td>
+            <td class="px-3 py-1.5">
+              <span *ngIf="r.ok" class="text-emerald-700">OK</span>
+              <span *ngIf="!r.ok" class="text-rose-700">Invalid</span>
+            </td>
+            <td class="px-3 py-1.5 text-rose-700">{{ r.errors.join(' · ') }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ========== CONFIG ========== -->
+  <section *ngIf="tab === 'config'" class="space-y-3">
+    <!-- Config info -->
+    <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4 flex gap-3">
+      <svg class="w-5 h-5 text-indigo-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+      </svg>
+      <div class="text-sm text-indigo-800">
+        <p class="font-semibold">Adaptive Test Defaults</p>
+        <p class="mt-1">These settings are used as defaults when students launch adaptive tests. Individual tests can override them.</p>
+      </div>
+    </div>
+    <p class="text-sm text-gray-600">Defaults for adaptive tests students generate in this course.</p>
+    <div class="grid grid-cols-2 gap-3">
+      <label class="text-xs" title="Number of questions shown per adaptive test if not overridden when creating the test">
+        Default question count (chapter test) ⓘ
+        <input [(ngModel)]="config.default_question_count" type="number" class="w-full rounded border px-2 py-1.5 text-sm" />
+      </label>
+      <label class="text-xs" title="Time limit in minutes for a chapter adaptive test">
+        Default duration min (chapter test) ⓘ
+        <input [(ngModel)]="config.default_duration_min" type="number" class="w-full rounded border px-2 py-1.5 text-sm" />
+      </label>
+      <label class="text-xs" title="Number of questions in a mock (multi-chapter) adaptive test">
+        Default question count (mock test) ⓘ
+        <input [(ngModel)]="config.default_mock_question_count" type="number" class="w-full rounded border px-2 py-1.5 text-sm" />
+      </label>
+      <label class="text-xs" title="Time limit in minutes for a mock (multi-chapter) adaptive test">
+        Default duration min (mock test) ⓘ
+        <input [(ngModel)]="config.default_mock_duration_min" type="number" class="w-full rounded border px-2 py-1.5 text-sm" />
+      </label>
+      <label class="text-xs" title="Chapters with fewer reviewed questions than this threshold are flagged in orange on the health strip above">
+        Min questions per chapter (warning threshold) ⓘ
+        <input [(ngModel)]="config.min_questions_per_chapter" type="number" class="w-full rounded border px-2 py-1.5 text-sm" />
+      </label>
+    </div>
+    <div class="p-3 border rounded bg-gray-50">
+      <div class="text-xs font-semibold mb-1">Difficulty distribution (must sum to 1.0)</div>
+      <p class="text-xs text-gray-500 mb-2">
+        <strong>Below</strong> = questions easier than student's ability (confidence builders) ·
+        <strong>At</strong> = matched to ability (core practice) ·
+        <strong>Above</strong> = harder than ability (growth challenges)
+      </p>
+      <div class="grid grid-cols-3 gap-2">
+        <label class="text-xs">Below <input [(ngModel)]="config.difficulty_targets.below" type="number" step="0.05" class="w-full rounded border px-2 py-1.5 text-sm" /></label>
+        <label class="text-xs">At <input [(ngModel)]="config.difficulty_targets.at" type="number" step="0.05" class="w-full rounded border px-2 py-1.5 text-sm" /></label>
+        <label class="text-xs">Above <input [(ngModel)]="config.difficulty_targets.above" type="number" step="0.05" class="w-full rounded border px-2 py-1.5 text-sm" /></label>
+      </div>
+    </div>
+    <!-- Mock Test Pattern -->
+    <div class="border rounded-lg p-4 space-y-3">
+      <div class="flex items-center gap-3">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" [(ngModel)]="usePattern" class="rounded" />
+          <span class="text-sm font-semibold">Use structured mock test pattern</span>
+        </label>
+        <span class="text-xs text-gray-500">Define sections, marks, and timing for adaptive mock tests</span>
+      </div>
+
+      <div *ngIf="usePattern" class="space-y-4">
+        <div class="grid grid-cols-2 gap-3">
+          <label class="text-xs">
+            Total duration (min)
+            <input [(ngModel)]="pattern.total_duration_min" type="number" min="10" class="w-full rounded border px-2 py-1.5 text-sm" />
+          </label>
+          <label class="flex items-center gap-2 text-xs pt-4">
+            <input type="checkbox" [(ngModel)]="pattern.can_navigate_between_sections" class="rounded" />
+            Students can navigate between sections
+          </label>
+        </div>
+
+        <!-- Section list -->
+        <div *ngFor="let sec of pattern.sections; let i = index" class="border rounded-lg p-3 bg-gray-50 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-indigo-700">Section {{ i + 1 }}</span>
+            <button type="button" (click)="removePatternSection(i)" class="text-red-500 text-xs hover:underline">Remove</button>
+          </div>
+
+          <label class="text-xs block">
+            Section name
+            <input [(ngModel)]="sec.name" type="text" placeholder="e.g. Physics" class="w-full rounded border px-2 py-1.5 text-sm" />
+          </label>
+
+          <div class="text-xs font-medium mb-1">Chapters in this section</div>
+          <div class="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+            <button *ngFor="let ch of chapters" type="button"
+              (click)="togglePatternChapter(sec, ch.id)"
+              [class]="isPatternChapterSelected(sec, ch.id) ? 'bg-indigo-600 text-white text-xs rounded px-2 py-0.5' : 'bg-white border text-xs rounded px-2 py-0.5 hover:border-indigo-400'">
+              {{ ch.book_name }} / {{ ch.name }}
+            </button>
+          </div>
+          <div *ngIf="!sec.chapter_ids.length" class="text-xs text-red-500">Select at least one chapter</div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <label class="text-xs">
+              Questions
+              <input [(ngModel)]="sec.question_count" type="number" min="1" class="w-full rounded border px-2 py-1.5 text-sm" />
+            </label>
+            <label class="text-xs">
+              Marks (+ve)
+              <input [(ngModel)]="sec.marks_pos" type="number" step="0.5" min="0.5" class="w-full rounded border px-2 py-1.5 text-sm" />
+            </label>
+            <label class="text-xs">
+              Marks (−ve, use negative value e.g. −1)
+              <input [(ngModel)]="sec.marks_neg" type="number" step="0.25" max="0" class="w-full rounded border px-2 py-1.5 text-sm" />
+            </label>
+            <label class="text-xs">
+              Time limit (min, 0 = no limit)
+              <input [(ngModel)]="sec.time_limit_min" type="number" min="0" class="w-full rounded border px-2 py-1.5 text-sm" />
+            </label>
+          </div>
+
+          <div class="text-xs font-medium">Allowed question types (leave empty = all types)</div>
+          <div class="flex flex-wrap gap-1.5">
+            <button *ngFor="let t of questionTypeOptions" type="button"
+              (click)="togglePatternType(sec, t)"
+              [class]="isPatternTypeSelected(sec, t) ? 'bg-indigo-600 text-white text-xs rounded px-2 py-0.5' : 'bg-white border text-xs rounded px-2 py-0.5 hover:border-indigo-400'">
+              {{ t }}
+            </button>
+          </div>
+          <div *ngIf="sec.allowed_question_types?.length" class="grid grid-cols-2 gap-2 mt-1">
+            <label *ngFor="let t of sec.allowed_question_types" class="text-xs flex items-center gap-2">
+              <span class="w-32 truncate">{{ t }} count</span>
+              <input
+                type="number"
+                min="0"
+                [ngModel]="sec.question_count_per_type?.[t] ?? 0"
+                (ngModelChange)="setPatternTypeCount(sec, t, $event)"
+                class="w-full rounded border px-2 py-1 text-sm"
+                [placeholder]="'# of ' + t"
+              />
+            </label>
+          </div>
+        </div>
+
+        <button type="button" (click)="addPatternSection()" class="text-indigo-600 text-sm border border-indigo-300 rounded px-3 py-1.5 hover:bg-indigo-50">
+          + Add section
+        </button>
+
+        <div *ngIf="pattern.sections.length" class="text-xs text-gray-500">
+          Total: {{ patternTotalQuestions() }} questions across {{ pattern.sections.length }} sections · {{ pattern.total_duration_min }} min
+        </div>
+      </div>
+    </div>
+
+    <button (click)="saveConfig()" class="bg-indigo-600 text-white text-sm rounded px-4 py-2">Save config</button>
+  </section>
+
+  <!-- Footer nav -->
+  <div class="flex justify-between pt-3 border-t">
+    <button (click)="back.emit()" class="text-sm text-gray-600">← Back</button>
+    <button (click)="continue.emit()" class="bg-indigo-600 text-white text-sm rounded px-4 py-2">Continue →</button>
+  </div>
+</div>

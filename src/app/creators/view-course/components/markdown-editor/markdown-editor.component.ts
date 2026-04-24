@@ -314,10 +314,24 @@ export class MarkdownEditorComponent implements OnInit {
       try {
         // Pre-process content to handle multiple line breaks
         let processedContent = this.content
+          // Convert \[...\] display math to $$...$$ (marked-katex-extension only handles $$)
+          .replace(/\\\[([\s\S]*?)\\\]/g, (_m, inner) => `$$${inner.trim()}$$`)
+          // Convert \(...\) inline math to $...$
+          .replace(/\\\(([\s\S]*?)\\\)/g, (_m, inner) => `$${inner.trim()}$`)
           // Convert double line breaks to proper paragraph breaks
           .replace(/\n\s*\n/g, '\n\n')
+          // Collapse newlines inside $$...$$ blocks so marked-katex can parse them,
+          // but preserve LaTeX line-break markers (\\) used in aligned/array environments.
+          // Lines ending with \\ keep their line-break; lines ending with \ get the missing \ added.
+          .replace(/\$\$([\s\S]*?)\$\$/g, (_m, inner) => {
+            const normalized = inner.trim()
+              .replace(/\\\\\n/g, '\\\\ ')   // \\ + newline → \\ + space (line break preserved)
+              .replace(/\\\n/g, '\\\\ ')     // \ + newline → \\ + space (complete missing backslash)
+              .replace(/\n/g, ' ');          // remaining bare newlines → space
+            return `$$${normalized}$$`;
+          })
           // Ensure proper spacing around math formulas
-          .replace(/(\$\$[\s\S]*?\$\$)/g, '\n\n$1\n\n')
+          .replace(/(\$\$[^$]*?\$\$)/g, '\n\n$1\n\n')
           .replace(/(\$[^$\n]*?\$)/g, ' $1 ');
         
         const html = marked.parse(processedContent) as string;
