@@ -169,6 +169,18 @@ export class AdaptiveApiService {
     return this.api.post(`${this.qbBase(courseId)}/generate`, payload);
   }
 
+  getGenerationStatus(courseId: string, jobId: string): Observable<{
+    job_id: string;
+    status: 'running' | 'completed' | 'failed';
+    total_batches: number;
+    completed_batches: number;
+    generated_count: number;
+    errors: string[];
+    progress_pct: number;
+  }> {
+    return this.api.get(`${this.qbBase(courseId)}/generate/${jobId}/status`);
+  }
+
   reviewQuestion(
     courseId: string,
     questionId: string,

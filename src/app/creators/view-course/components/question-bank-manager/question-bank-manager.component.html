@@ -260,6 +260,28 @@
       >
         {{ generating ? 'Generating…' : 'Generate ' + aiRequest.chapter_ids.length * aiRequest.questions_per_chapter + ' questions' }}
       </button>
+
+      <!-- Progress bar (shown while generation is running) -->
+      <div *ngIf="generating" class="mt-3 space-y-1">
+        <div class="flex justify-between text-xs text-gray-600">
+          <span>Batch {{ genBatches.completed }} of {{ genBatches.total }}</span>
+          <span>{{ genProgress }}%</span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-2">
+          <div
+            class="bg-purple-500 h-2 rounded-full transition-all duration-300"
+            [style.width.%]="genProgress"
+          ></div>
+        </div>
+        <p class="text-xs text-gray-500">Questions generated so far: <strong>{{ genCount }}</strong></p>
+      </div>
+
+      <!-- Batch errors (shown while generating or after failure) -->
+      <ul *ngIf="genErrors.length" class="mt-2 space-y-0.5">
+        <li *ngFor="let e of genErrors" class="text-xs text-amber-700 flex gap-1">
+          <span>⚠</span><span>{{ e }}</span>
+        </li>
+      </ul>
     </div>
 
     <div *ngIf="pending" class="space-y-2">

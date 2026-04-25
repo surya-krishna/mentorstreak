@@ -12,7 +12,10 @@
 <!-- Editor Form -->
 <div *ngIf="currentTest && !isLoadingDetails" class="p-6 space-y-6">
     <div class="flex items-center justify-between mb-4 border-b pb-4">
-        <h2 class="text-xl font-bold text-gray-800">{{ currentTest.id ? 'Edit Test' : 'New Test' }}</h2>
+        <div class="flex items-center gap-3">
+            <h2 class="text-xl font-bold text-gray-800">{{ currentTest.id ? 'Edit Test' : 'New Test' }}</h2>
+            <span *ngIf="currentTest.is_adaptive" class="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700">Adaptive</span>
+        </div>
         <div class="flex gap-3">
             <button (click)="cancelTestEdit()"
                 class="px-4 py-2 rounded border text-gray-600 hover:bg-gray-50 text-sm">Cancel</button>
@@ -88,11 +91,38 @@
             <label for="negMarking" class="text-sm font-medium text-gray-700 select-none cursor-pointer">Enable
                 Negative Marking for this test</label>
         </div>
+
+        <!-- Adaptive-only fields: source chapters & question count -->
+        <ng-container *ngIf="currentTest.is_adaptive">
+            <div class="col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Source Chapters <span class="text-red-600">*</span></label>
+                <div class="border rounded-md p-3 max-h-48 overflow-y-auto bg-white space-y-1">
+                    <label *ngFor="let ch of allChapters" class="flex items-center gap-2 text-sm cursor-pointer">
+                        <input type="checkbox" [checked]="currentTest.source_chapters?.includes(ch.id)"
+                            (change)="toggleAdaptiveSourceChapter(ch.id)"
+                            class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+                        <span>{{ ch.subject }} — {{ ch.name }}</span>
+                    </label>
+                </div>
+                <div *ngIf="showManualErrors && (!currentTest.source_chapters || !currentTest.source_chapters.length)"
+                    class="text-xs text-red-600 mt-1">Select at least one source chapter</div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Questions per Test</label>
+                <input type="number" [(ngModel)]="currentTest.question_count" min="5" max="200"
+                    class="w-full rounded-md border border-gray-200 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+            </div>
+        </ng-container>
     </div>
 
 
-    <!-- Sections -->
-    <div class="space-y-4">
+    <!-- Adaptive placeholder (no manual section editor) -->
+    <div *ngIf="currentTest.is_adaptive" class="rounded-lg border border-dashed border-indigo-300 bg-indigo-50 p-6 text-center text-indigo-600 text-sm">
+        Questions are selected automatically from the chosen source chapters based on each student's ability level.
+    </div>
+
+    <!-- Sections (hidden for adaptive tests) -->
+    <div *ngIf="!currentTest.is_adaptive" class="space-y-4">
         <div *ngFor="let section of currentTest.sections; let si = index" class="border rounded-lg overflow-hidden">
             <div class="bg-gray-100 p-3 flex items-center justify-between border-b">
                 <div class="flex flex-col gap-2 flex-1">

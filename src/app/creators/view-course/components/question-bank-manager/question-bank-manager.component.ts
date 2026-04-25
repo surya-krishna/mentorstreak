@@ -1,6 +1,8 @@
-import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { interval, Subscription } from 'rxjs';
+import { switchMap, takeWhile } from 'rxjs/operators';
 import { AdaptiveApiService, QuestionBankItem, QuestionStats, CsvImportResult, PendingReviewResponse, MockTestPatternSection, MockTestPattern } from '../../../adaptive-api.service';
 import { ToastService } from '../../../../toast.service';
 import { ModalService } from '../../../../modal.service';
@@ -21,7 +23,7 @@ interface ChapterOption {
   imports: [CommonModule, FormsModule, LatexTextComponent],
   templateUrl: './question-bank-manager.component.html',
 })
-export class QuestionBankManagerComponent implements OnInit, OnChanges {
+export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestroy {
   @Input() course: any;
   @Input() courseId!: string;
   @Output() back = new EventEmitter<void>();
@@ -57,6 +59,12 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges {
     distribution: { easy: 6, medium: 8, hard: 6 },
   };
   generating = false;
+  genJobId: string | null = null;
+  genProgress = 0;
+  genBatches = { completed: 0, total: 0 };
+  genCount = 0;
+  genErrors: string[] = [];
+  private pollSub?: Subscription;
   pending: PendingReviewResponse | null = null;
   selectedPending: Record<string, boolean> = {};
 
@@ -285,6 +293,9 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges {
       return;
     }
     this.generating = true;
+    this.genProgress = 0;
+    this.genErrors = [];
+    this.genBatches = { completed: 0, total: 0 };
     this.adaptive
       .generateQuestions(this.courseId, {
         chapter_ids: this.aiRequest.chapter_ids,
@@ -293,17 +304,51 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges {
       })
       .subscribe({
         next: (res: any) => {
-          this.generating = false;
-          const n = res?.total_generated ?? 0;
-          this.toast.success(`Generated ${n} questions. Ready for review.`);
-          this.loadPendingReview();
-          this.loadStats();
+          this.genJobId = res.job_id;
+          this.genBatches.total = res.total_batches ?? 0;
+          this.startPolling();
         },
         error: (err) => {
           this.generating = false;
-          this.toast.error('Generation failed: ' + (err?.message || ''));
+          this.toast.error('Failed to start generation: ' + (err?.message || ''));
         },
       });
+  }
+
+  private startPolling(): void {
+    this.pollSub?.unsubscribe();
+    this.pollSub = interval(2500)
+      .pipe(
+        switchMap(() => this.adaptive.getGenerationStatus(this.courseId, this.genJobId!)),
+        takeWhile((s) => s.status === 'running', true)
+      )
+      .subscribe({
+        next: (s) => {
+          this.genProgress = s.progress_pct;
+          this.genBatches = { completed: s.completed_batches, total: s.total_batches };
+          this.genCount = s.generated_count;
+          this.genErrors = s.errors;
+          if (s.status !== 'running') {
+            this.generating = false;
+            this.pollSub?.unsubscribe();
+            if (s.status === 'completed') {
+              this.toast.success(`Generated ${s.generated_count} questions. Ready for review.`);
+            } else {
+              this.toast.error('Generation failed. See errors below.');
+            }
+            this.loadPendingReview();
+            this.loadStats();
+          }
+        },
+        error: () => {
+          this.generating = false;
+          this.toast.error('Lost connection while tracking generation progress.');
+        },
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.pollSub?.unsubscribe();
   }
 
   loadPendingReview(): void {

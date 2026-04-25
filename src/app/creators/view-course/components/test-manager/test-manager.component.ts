@@ -95,7 +95,7 @@ export class TestManagerComponent implements OnInit, OnChanges {
             if (this.action === 'create') {
                 this.initNewTest();
             } else if (this.action === 'adaptive') {
-                this.openAdaptiveModal();
+                this.initNewAdaptiveTest();
             }
         }
     }
@@ -128,6 +128,38 @@ export class TestManagerComponent implements OnInit, OnChanges {
                 this.tests = Array.isArray(res) ? res : (res?.items || []);
             }, error: (err: any) => { console.error('Failed to load tests', err); this.tests = []; }
         });
+    }
+
+    initNewAdaptiveTest() {
+        this.currentTest = {
+            title: '',
+            type: 'CHAPTER',
+            duration: 30,
+            instructions: '',
+            hasNegativeMarking: false,
+            scoringFormula: 'Raw Score',
+            unattemptedMarks: 0,
+            sections: [],
+            status: 'draft',
+            is_adaptive: true,
+            adaptive_mode: 'chapter' as 'chapter' | 'mock',
+            source_chapters: [] as string[],
+            question_count: this.adaptiveCourseConfig?.default_question_count ?? 20,
+            duration_min: this.adaptiveCourseConfig?.default_duration_min ?? 30,
+            difficulty_targets: null
+        };
+        // Fetch config defaults if not yet loaded
+        if (!this.adaptiveCourseConfig && this.courseId) {
+            this.adaptiveApi.getAdaptiveConfig(this.courseId).subscribe({
+                next: (res) => {
+                    this.adaptiveCourseConfig = res.adaptive_config;
+                    this.currentTest.question_count = res.adaptive_config.default_question_count;
+                    this.currentTest.duration_min = res.adaptive_config.default_duration_min;
+                    this.currentTest.duration = res.adaptive_config.default_duration_min;
+                },
+                error: () => {}
+            });
+        }
     }
 
     initNewTest() {
@@ -165,6 +197,16 @@ export class TestManagerComponent implements OnInit, OnChanges {
                 if (this.currentTest.unattemptedMarks === undefined) this.currentTest.unattemptedMarks = 0;
                 if (!this.currentTest.sections) this.currentTest.sections = [];
 
+                // Adaptive test: map stored type back to display type and ensure adaptive fields
+                if (this.currentTest.is_adaptive) {
+                    const storedType: string = this.currentTest.type || '';
+                    this.currentTest.adaptive_mode = storedType === 'ADAPTIVE_MOCK' ? 'mock' : 'chapter';
+                    this.currentTest.type = storedType === 'ADAPTIVE_MOCK' ? 'OVERALL' : 'CHAPTER';
+                    if (!this.currentTest.source_chapters) this.currentTest.source_chapters = [];
+                    if (!this.currentTest.question_count) this.currentTest.question_count = 20;
+                    if (!this.currentTest.duration_min) this.currentTest.duration_min = this.currentTest.duration || 30;
+                }
+
                 this.currentTest.sections.forEach((s: any) => {
                     if (s.timeLimit === undefined) s.timeLimit = 0;
                     if (!s.selectedChapters) s.selectedChapters = [];
@@ -200,11 +242,38 @@ export class TestManagerComponent implements OnInit, OnChanges {
         });
     }
 
+    buildTestPayload(): any {
+        const t = this.currentTest;
+        const payload: any = {
+            title: t.title,
+            type: t.type,
+            duration: t.duration,
+            instructions: t.instructions || '',
+            hasNegativeMarking: t.hasNegativeMarking || false,
+            scoringFormula: t.scoringFormula || 'Raw Score',
+            unattemptedMarks: t.unattemptedMarks || 0,
+            sections: t.sections || [],
+            status: t.status || 'draft',
+            chapterId: t.chapterId || null,
+            selectedChapters: t.selectedChapters || [],
+        };
+        if (t.is_adaptive) {
+            payload.is_adaptive = true;
+            payload.adaptive_mode = t.adaptive_mode || 'chapter';
+            payload.source_chapters = t.source_chapters || [];
+            payload.question_count = t.question_count;
+            payload.duration_min = t.duration_min || t.duration;
+            if (t.difficulty_targets) payload.difficulty_targets = t.difficulty_targets;
+        }
+        return payload;
+    }
+
     saveTest() {
         this.actionMessage = 'Saving test...';
+        const payload = this.buildTestPayload();
         if (this.currentTest.id) {
             // Update
-            this.api.put(`/creator/v2/tests/${this.currentTest.id}`, this.currentTest).subscribe({
+            this.api.put(`/creator/v2/tests/${this.currentTest.id}`, payload).subscribe({
                 next: (res: any) => {
                     this.finishSaveTest();
                 },
@@ -215,7 +284,7 @@ export class TestManagerComponent implements OnInit, OnChanges {
             });
         } else {
             // Create
-            this.api.post(`/creator/v2/courses/${this.courseId}/tests`, this.currentTest).subscribe({
+            this.api.post(`/creator/v2/courses/${this.courseId}/tests`, payload).subscribe({
                 next: (res: any) => {
                     this.currentTest.id = res.id;
                     this.finishSaveTest();
@@ -801,6 +870,13 @@ export class TestManagerComponent implements OnInit, OnChanges {
         });
     }
 
+    toggleAdaptiveSourceChapter(chapterId: string) {
+        if (!this.currentTest.source_chapters) this.currentTest.source_chapters = [];
+        const idx = this.currentTest.source_chapters.indexOf(chapterId);
+        if (idx === -1) this.currentTest.source_chapters.push(chapterId);
+        else this.currentTest.source_chapters.splice(idx, 1);
+    }
+
     // Validation for manual create/edit test
     manualTestValid(): boolean {
         const t = this.currentTest;
@@ -808,6 +884,10 @@ export class TestManagerComponent implements OnInit, OnChanges {
         if (!t.title || !String(t.title).trim().length) return false;
         if (!(Number(t.duration) > 0)) return false;
         if (!t.type) return false;
+        // Adaptive test: only need source chapters
+        if (t.is_adaptive) {
+            return !!(t.source_chapters && t.source_chapters.length > 0);
+        }
         if (t.type === 'CHAPTER') {
             if (!t.selectedSubject || !String(t.selectedSubject).trim().length) return false;
             if (!t.chapterId) return false;
