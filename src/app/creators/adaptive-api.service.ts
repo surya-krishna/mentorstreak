@@ -119,10 +119,12 @@ export interface AdaptiveAnalytics {
 export interface AdaptiveTestCreatePayload {
   title: string;
   instructions?: string;
-  adaptive_mode: 'chapter' | 'mock';
-  source_chapters: string[];
-  question_count?: number;
-  duration_min?: number;
+  sections: MockTestPatternSection[];
+  total_duration_min: number;
+  can_navigate_between_sections?: boolean;
+  hasNegativeMarking?: boolean;
+  scoringFormula?: string;
+  unattemptedMarks?: number;
   difficulty_targets?: { below: number; at: number; above: number };
   status?: string;
 }

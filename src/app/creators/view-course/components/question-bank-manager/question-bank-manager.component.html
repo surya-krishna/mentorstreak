@@ -46,7 +46,7 @@
   <!-- Tabs -->
   <div class="border-b flex gap-4">
     <button
-      *ngFor="let t of [{k:'browse',l:'Browse & Manage'},{k:'ai',l:'AI Generation & Review'},{k:'csv',l:'CSV Import'},{k:'config',l:'Adaptive Config'}]"
+      *ngFor="let t of [{k:'browse',l:'Browse & Manage'},{k:'ai',l:'AI Generation & Review'},{k:'csv',l:'CSV Import'}]"
       (click)="selectTab($any(t.k))"
       [class.border-indigo-600]="tab === t.k"
       [class.text-indigo-700]="tab === t.k"
@@ -405,151 +405,11 @@
     </div>
   </section>
 
-  <!-- ========== CONFIG ========== -->
+  <!-- ========== CONFIG (removed — config is now inline in each adaptive test in Test Manager) ========== -->
   <section *ngIf="tab === 'config'" class="space-y-3">
-    <!-- Config info -->
-    <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4 flex gap-3">
-      <svg class="w-5 h-5 text-indigo-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-      </svg>
-      <div class="text-sm text-indigo-800">
-        <p class="font-semibold">Adaptive Test Defaults</p>
-        <p class="mt-1">These settings are used as defaults when students launch adaptive tests. Individual tests can override them.</p>
-      </div>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
+      Adaptive test configuration has moved to the <strong>Test Manager</strong>. Create or edit an adaptive test there to set question count, marking scheme, and mock pattern.
     </div>
-    <p class="text-sm text-gray-600">Defaults for adaptive tests students generate in this course.</p>
-    <div class="grid grid-cols-2 gap-3">
-      <label class="text-xs" title="Number of questions shown per adaptive test if not overridden when creating the test">
-        Default question count (chapter test) ⓘ
-        <input [(ngModel)]="config.default_question_count" type="number" class="w-full rounded border px-2 py-1.5 text-sm" />
-      </label>
-      <label class="text-xs" title="Time limit in minutes for a chapter adaptive test">
-        Default duration min (chapter test) ⓘ
-        <input [(ngModel)]="config.default_duration_min" type="number" class="w-full rounded border px-2 py-1.5 text-sm" />
-      </label>
-      <label class="text-xs" title="Number of questions in a mock (multi-chapter) adaptive test">
-        Default question count (mock test) ⓘ
-        <input [(ngModel)]="config.default_mock_question_count" type="number" class="w-full rounded border px-2 py-1.5 text-sm" />
-      </label>
-      <label class="text-xs" title="Time limit in minutes for a mock (multi-chapter) adaptive test">
-        Default duration min (mock test) ⓘ
-        <input [(ngModel)]="config.default_mock_duration_min" type="number" class="w-full rounded border px-2 py-1.5 text-sm" />
-      </label>
-      <label class="text-xs" title="Chapters with fewer reviewed questions than this threshold are flagged in orange on the health strip above">
-        Min questions per chapter (warning threshold) ⓘ
-        <input [(ngModel)]="config.min_questions_per_chapter" type="number" class="w-full rounded border px-2 py-1.5 text-sm" />
-      </label>
-    </div>
-    <div class="p-3 border rounded bg-gray-50">
-      <div class="text-xs font-semibold mb-1">Difficulty distribution (must sum to 1.0)</div>
-      <p class="text-xs text-gray-500 mb-2">
-        <strong>Below</strong> = questions easier than student's ability (confidence builders) ·
-        <strong>At</strong> = matched to ability (core practice) ·
-        <strong>Above</strong> = harder than ability (growth challenges)
-      </p>
-      <div class="grid grid-cols-3 gap-2">
-        <label class="text-xs">Below <input [(ngModel)]="config.difficulty_targets.below" type="number" step="0.05" class="w-full rounded border px-2 py-1.5 text-sm" /></label>
-        <label class="text-xs">At <input [(ngModel)]="config.difficulty_targets.at" type="number" step="0.05" class="w-full rounded border px-2 py-1.5 text-sm" /></label>
-        <label class="text-xs">Above <input [(ngModel)]="config.difficulty_targets.above" type="number" step="0.05" class="w-full rounded border px-2 py-1.5 text-sm" /></label>
-      </div>
-    </div>
-    <!-- Mock Test Pattern -->
-    <div class="border rounded-lg p-4 space-y-3">
-      <div class="flex items-center gap-3">
-        <label class="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" [(ngModel)]="usePattern" class="rounded" />
-          <span class="text-sm font-semibold">Use structured mock test pattern</span>
-        </label>
-        <span class="text-xs text-gray-500">Define sections, marks, and timing for adaptive mock tests</span>
-      </div>
-
-      <div *ngIf="usePattern" class="space-y-4">
-        <div class="grid grid-cols-2 gap-3">
-          <label class="text-xs">
-            Total duration (min)
-            <input [(ngModel)]="pattern.total_duration_min" type="number" min="10" class="w-full rounded border px-2 py-1.5 text-sm" />
-          </label>
-          <label class="flex items-center gap-2 text-xs pt-4">
-            <input type="checkbox" [(ngModel)]="pattern.can_navigate_between_sections" class="rounded" />
-            Students can navigate between sections
-          </label>
-        </div>
-
-        <!-- Section list -->
-        <div *ngFor="let sec of pattern.sections; let i = index" class="border rounded-lg p-3 bg-gray-50 space-y-3">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold text-indigo-700">Section {{ i + 1 }}</span>
-            <button type="button" (click)="removePatternSection(i)" class="text-red-500 text-xs hover:underline">Remove</button>
-          </div>
-
-          <label class="text-xs block">
-            Section name
-            <input [(ngModel)]="sec.name" type="text" placeholder="e.g. Physics" class="w-full rounded border px-2 py-1.5 text-sm" />
-          </label>
-
-          <div class="text-xs font-medium mb-1">Chapters in this section</div>
-          <div class="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
-            <button *ngFor="let ch of chapters" type="button"
-              (click)="togglePatternChapter(sec, ch.id)"
-              [class]="isPatternChapterSelected(sec, ch.id) ? 'bg-indigo-600 text-white text-xs rounded px-2 py-0.5' : 'bg-white border text-xs rounded px-2 py-0.5 hover:border-indigo-400'">
-              {{ ch.book_name }} / {{ ch.name }}
-            </button>
-          </div>
-          <div *ngIf="!sec.chapter_ids.length" class="text-xs text-red-500">Select at least one chapter</div>
-
-          <div class="grid grid-cols-2 gap-2">
-            <label class="text-xs">
-              Questions
-              <input [(ngModel)]="sec.question_count" type="number" min="1" class="w-full rounded border px-2 py-1.5 text-sm" />
-            </label>
-            <label class="text-xs">
-              Marks (+ve)
-              <input [(ngModel)]="sec.marks_pos" type="number" step="0.5" min="0.5" class="w-full rounded border px-2 py-1.5 text-sm" />
-            </label>
-            <label class="text-xs">
-              Marks (−ve, use negative value e.g. −1)
-              <input [(ngModel)]="sec.marks_neg" type="number" step="0.25" max="0" class="w-full rounded border px-2 py-1.5 text-sm" />
-            </label>
-            <label class="text-xs">
-              Time limit (min, 0 = no limit)
-              <input [(ngModel)]="sec.time_limit_min" type="number" min="0" class="w-full rounded border px-2 py-1.5 text-sm" />
-            </label>
-          </div>
-
-          <div class="text-xs font-medium">Allowed question types (leave empty = all types)</div>
-          <div class="flex flex-wrap gap-1.5">
-            <button *ngFor="let t of questionTypeOptions" type="button"
-              (click)="togglePatternType(sec, t)"
-              [class]="isPatternTypeSelected(sec, t) ? 'bg-indigo-600 text-white text-xs rounded px-2 py-0.5' : 'bg-white border text-xs rounded px-2 py-0.5 hover:border-indigo-400'">
-              {{ t }}
-            </button>
-          </div>
-          <div *ngIf="sec.allowed_question_types?.length" class="grid grid-cols-2 gap-2 mt-1">
-            <label *ngFor="let t of sec.allowed_question_types" class="text-xs flex items-center gap-2">
-              <span class="w-32 truncate">{{ t }} count</span>
-              <input
-                type="number"
-                min="0"
-                [ngModel]="sec.question_count_per_type?.[t] ?? 0"
-                (ngModelChange)="setPatternTypeCount(sec, t, $event)"
-                class="w-full rounded border px-2 py-1 text-sm"
-                [placeholder]="'# of ' + t"
-              />
-            </label>
-          </div>
-        </div>
-
-        <button type="button" (click)="addPatternSection()" class="text-indigo-600 text-sm border border-indigo-300 rounded px-3 py-1.5 hover:bg-indigo-50">
-          + Add section
-        </button>
-
-        <div *ngIf="pattern.sections.length" class="text-xs text-gray-500">
-          Total: {{ patternTotalQuestions() }} questions across {{ pattern.sections.length }} sections · {{ pattern.total_duration_min }} min
-        </div>
-      </div>
-    </div>
-
-    <button (click)="saveConfig()" class="bg-indigo-600 text-white text-sm rounded px-4 py-2">Save config</button>
   </section>
 
   <!-- Footer nav -->
