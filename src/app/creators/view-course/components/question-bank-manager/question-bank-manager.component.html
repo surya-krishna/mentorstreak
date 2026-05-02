@@ -235,7 +235,7 @@
           {{ c.book_name }} · {{ c.name }}
         </button>
       </div>
-      <div class="grid grid-cols-4 gap-2 items-end">
+      <div class="grid grid-cols-4 gap-2 items-end mb-2">
         <label class="text-xs">
           Per chapter
           <input [(ngModel)]="aiRequest.questions_per_chapter" type="number" min="5" max="100" class="w-full rounded border px-2 py-1.5 text-sm" />
@@ -253,6 +253,8 @@
           <input [(ngModel)]="aiRequest.distribution.hard" type="number" min="0" class="w-full rounded border px-2 py-1.5 text-sm" />
         </label>
       </div>
+
+
       <button
         (click)="generate()"
         [disabled]="generating"

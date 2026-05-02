@@ -537,12 +537,48 @@ export class TestManagerComponent implements OnInit, OnChanges {
         this.currentTest.adaptive_sections.push({
             name: `Section ${this.currentTest.adaptive_sections.length + 1}`,
             chapter_ids: [],
-            question_count: 10,
+            question_count: 0,
+            type_counts: { MCQ: 10, MSQ: 5, 'True/False': 5 },
+            passage_config: null,
             marks_pos: 1,
             marks_neg: 0,
             time_limit_min: 0,
         });
     }
+
+    getAdaptiveTypeCount(sec: any, type: string): number {
+        return (sec.type_counts ?? {})[type] ?? 0;
+    }
+
+    setAdaptiveTypeCount(sec: any, type: string, count: number): void {
+        if (!sec.type_counts) sec.type_counts = {};
+        const n = Number(count) || 0;
+        if (n <= 0) delete sec.type_counts[type];
+        else sec.type_counts[type] = n;
+    }
+
+    adaptiveSectionTotal(sec: any): number {
+        const typesTotal = Object.values(sec.type_counts ?? {}).reduce((a: number, b: any) => a + Number(b), 0);
+        const passageTotal = (sec.passage_config?.passages ?? []).reduce((sum: number, p: any) => sum + (Number(p.questions_per_passage) || 0), 0);
+        return typesTotal + passageTotal;
+    }
+
+    toggleAdaptivePassageConfig(sec: any): void {
+        if (sec.passage_config) sec.passage_config = null;
+        else sec.passage_config = { num_passages: 1, passages: [{ questions_per_passage: 4 }] };
+    }
+
+    setAdaptivePassageCount(sec: any, count: number): void {
+        if (!sec.passage_config) return;
+        const n = Math.max(1, Math.min(Number(count) || 1, 20));
+        sec.passage_config.num_passages = n;
+        const current: any[] = sec.passage_config.passages || [];
+        while (current.length < n) current.push({ questions_per_passage: 4 });
+        current.splice(n);
+        sec.passage_config.passages = current;
+    }
+
+    readonly renderableTypes = ['MCQ', 'MSQ', 'True/False', 'Descriptive', 'Fill-in-the-Blanks'];
 
     removeAdaptiveSection(index: number) {
         if (!this.currentTest?.adaptive_sections) return;
@@ -568,7 +604,9 @@ export class TestManagerComponent implements OnInit, OnChanges {
         this.adaptiveForm.sections.push({
             name: `Section ${this.adaptiveForm.sections.length + 1}`,
             chapter_ids: [],
-            question_count: 10,
+            question_count: 0,
+            type_counts: { MCQ: 10, MSQ: 5, 'True/False': 5 },
+            passage_config: null,
             marks_pos: 1,
             marks_neg: 0,
             time_limit_min: 0,

@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { marked } from 'marked';
 import markedKatex from 'marked-katex-extension';
+import { ApiService } from '../../../../api-service';
 
 @Component({
   selector: 'app-markdown-editor',
@@ -269,12 +270,13 @@ import markedKatex from 'marked-katex-extension';
 export class MarkdownEditorComponent implements OnInit {
   @Input() content: string = '';
   @Input() editorHeight: string = '300px';
+  @Input() courseId: string = '';
   @Output() contentChange = new EventEmitter<string>();
 
   activeTab: 'editor' | 'preview' = 'editor';
   renderedContent: SafeHtml = '';
 
-  constructor(private sanitizer: DomSanitizer) {
+  constructor(private sanitizer: DomSanitizer, private api: ApiService) {
     // Configure marked with KaTeX extension for math formula support
     const katexOptions = {
       throwOnError: false,
@@ -333,7 +335,16 @@ export class MarkdownEditorComponent implements OnInit {
           // Ensure proper spacing around math formulas
           .replace(/(\$\$[^$]*?\$\$)/g, '\n\n$1\n\n')
           .replace(/(\$[^$\n]*?\$)/g, ' $1 ');
-        
+
+        // Rewrite relative image paths to full API URLs
+        if (this.courseId) {
+          const baseUrl = this.api.getBaseUrl();
+          processedContent = processedContent.replace(
+            /!\[([^\]]*)\]\((images\/[^)]+)\)/g,
+            (_m, alt, path) => `![${alt}](${baseUrl}/master/v2/files?filePath=${encodeURIComponent(this.courseId + '/' + path)})`
+          );
+        }
+
         const html = marked.parse(processedContent) as string;
         this.renderedContent = this.sanitizer.bypassSecurityTrustHtml(html);
       } catch (error) {

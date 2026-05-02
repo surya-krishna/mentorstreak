@@ -143,11 +143,7 @@
                             <input type="number" [(ngModel)]="sec.marks_neg" max="0" step="0.25"
                                 class="w-16 rounded border border-gray-300 px-2 py-1 text-xs text-red-700 font-medium" placeholder="0" />
                         </div>
-                        <div class="flex items-center gap-1 ml-1">
-                            <label class="text-xs text-gray-500">Qs:</label>
-                            <input type="number" [(ngModel)]="sec.question_count" min="1" max="200"
-                                class="w-16 rounded border border-gray-300 px-2 py-1 text-xs font-medium" />
-                        </div>
+                        <span class="text-xs text-gray-500 ml-1">Total: <strong>{{ adaptiveSectionTotal(sec) }}</strong> Qs</span>
                     </div>
                 </div>
 
@@ -178,6 +174,47 @@
                         <div *ngIf="allChapters.length === 0" class="text-gray-400 text-center py-3 text-sm">No chapters available.</div>
                     </div>
                     <div *ngIf="showManualErrors && !(sec.chapter_ids?.length)" class="text-xs text-red-600 mt-1">Select at least one chapter for this section.</div>
+                </div>
+
+                <!-- Per-type question counts -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Questions per Type</label>
+                    <div class="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                        <div *ngFor="let rt of renderableTypes" class="flex flex-col gap-0.5">
+                            <label class="text-xs text-gray-500">{{ rt }}</label>
+                            <input type="number" min="0" max="100"
+                                [ngModel]="getAdaptiveTypeCount(sec, rt)"
+                                (ngModelChange)="setAdaptiveTypeCount(sec, rt, $event)"
+                                class="rounded border border-gray-300 px-2 py-1 text-sm w-full" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Passage config toggle -->
+                <div class="space-y-2">
+                    <label class="flex items-center gap-2 text-sm cursor-pointer">
+                        <input type="checkbox" [checked]="!!sec.passage_config"
+                            (change)="toggleAdaptivePassageConfig(sec)"
+                            class="rounded text-indigo-600 h-4 w-4" />
+                        <span class="text-gray-700">Include passage-based questions</span>
+                    </label>
+                    <div *ngIf="sec.passage_config" class="pl-6 space-y-2">
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs text-gray-500">Number of passages:</label>
+                            <input type="number" min="1" max="20"
+                                [ngModel]="sec.passage_config.num_passages"
+                                (ngModelChange)="setAdaptivePassageCount(sec, $event)"
+                                class="w-16 rounded border border-gray-300 px-2 py-1 text-sm" />
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <div *ngFor="let p of sec.passage_config.passages; let pi = index" class="flex flex-col gap-0.5">
+                                <label class="text-xs text-gray-500">Passage {{pi + 1}} Qs</label>
+                                <input type="number" min="1" max="20"
+                                    [(ngModel)]="p.questions_per_passage"
+                                    class="rounded border border-gray-300 px-2 py-1 text-sm w-full" />
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -733,11 +770,7 @@
                                         <input type="number" [(ngModel)]="sec.marks_neg" max="0" step="0.25"
                                             class="w-14 rounded border border-gray-300 px-2 py-1 text-xs text-red-700 font-medium" placeholder="0" />
                                     </div>
-                                    <div class="flex items-center gap-1 ml-1">
-                                        <label class="text-xs text-gray-500">Qs:</label>
-                                        <input type="number" [(ngModel)]="sec.question_count" min="1" max="200"
-                                            class="w-14 rounded border border-gray-300 px-2 py-1 text-xs font-medium" />
-                                    </div>
+                                    <span class="text-xs text-gray-500 ml-1">Total: <strong>{{ adaptiveSectionTotal(sec) }}</strong> Qs</span>
                                 </div>
                             </div>
                             <button *ngIf="adaptiveForm.sections.length > 1" (click)="removeAdaptiveFormSection(si)"
@@ -763,6 +796,47 @@
                                 <div *ngIf="allChapters.length === 0" class="text-gray-400 text-center py-2 text-xs">No chapters available.</div>
                             </div>
                             <div *ngIf="showAdaptiveErrors && !(sec.chapter_ids?.length)" class="text-xs text-red-600 mt-1">Select at least one chapter.</div>
+                        </div>
+
+                        <!-- Per-type question counts -->
+                        <div class="p-3 border-t bg-white">
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Questions per Type</label>
+                            <div class="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                                <div *ngFor="let rt of renderableTypes" class="flex flex-col gap-0.5">
+                                    <label class="text-xs text-gray-500">{{ rt }}</label>
+                                    <input type="number" min="0" max="100"
+                                        [ngModel]="getAdaptiveTypeCount(sec, rt)"
+                                        (ngModelChange)="setAdaptiveTypeCount(sec, rt, $event)"
+                                        class="rounded border border-gray-300 px-2 py-1 text-sm w-full" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Passage config -->
+                        <div class="p-3 border-t bg-white space-y-2">
+                            <label class="flex items-center gap-2 text-sm cursor-pointer">
+                                <input type="checkbox" [checked]="!!sec.passage_config"
+                                    (change)="toggleAdaptivePassageConfig(sec)"
+                                    class="rounded text-indigo-600 h-4 w-4" />
+                                <span class="text-gray-700">Include passage-based questions</span>
+                            </label>
+                            <div *ngIf="sec.passage_config" class="pl-6 space-y-2">
+                                <div class="flex items-center gap-2">
+                                    <label class="text-xs text-gray-500">Number of passages:</label>
+                                    <input type="number" min="1" max="20"
+                                        [ngModel]="sec.passage_config.num_passages"
+                                        (ngModelChange)="setAdaptivePassageCount(sec, $event)"
+                                        class="w-16 rounded border border-gray-300 px-2 py-1 text-sm" />
+                                </div>
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                    <div *ngFor="let p of sec.passage_config.passages; let pi = index" class="flex flex-col gap-0.5">
+                                        <label class="text-xs text-gray-500">Passage {{pi + 1}} Qs</label>
+                                        <input type="number" min="1" max="20"
+                                            [(ngModel)]="p.questions_per_passage"
+                                            class="rounded border border-gray-300 px-2 py-1 text-sm w-full" />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

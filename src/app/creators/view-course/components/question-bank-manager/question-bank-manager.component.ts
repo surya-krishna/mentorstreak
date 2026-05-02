@@ -548,12 +548,12 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
     this.pattern.sections.push({
       name: '',
       chapter_ids: [],
-      question_count: 20,
+      question_count: 0,
+      type_counts: { MCQ: 10, MSQ: 5, 'True/False': 5 },
+      passage_config: null,
       marks_pos: 1,
       marks_neg: 0,
       time_limit_min: 0,
-      allowed_question_types: [],
-      question_count_per_type: {},
     });
   }
 
@@ -571,28 +571,33 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
     return sec.chapter_ids.includes(chapterId);
   }
 
-  togglePatternType(sec: MockTestPatternSection, type: string): void {
-    if (!sec.allowed_question_types) sec.allowed_question_types = [];
-    const idx = sec.allowed_question_types.indexOf(type);
-    if (idx >= 0) {
-      sec.allowed_question_types.splice(idx, 1);
-      if (sec.question_count_per_type) delete sec.question_count_per_type[type];
-    } else {
-      sec.allowed_question_types.push(type);
-    }
+  readonly renderableTypes = ['MCQ', 'MSQ', 'True/False', 'Descriptive', 'Fill-in-the-Blanks'];
+  readonly allQuestionTypes = ['MCQ', 'MSQ', 'True/False', 'Descriptive', 'Fill-in-the-Blanks', 'Matching', 'Sequence'];
+
+  getTypeCount(sec: MockTestPatternSection, type: string): number {
+    return (sec.type_counts ?? {})[type] ?? 0;
   }
 
-  setPatternTypeCount(sec: MockTestPatternSection, type: string, count: number): void {
-    if (!sec.question_count_per_type) sec.question_count_per_type = {};
-    sec.question_count_per_type[type] = Number(count) || 0;
+  setTypeCount(sec: MockTestPatternSection, type: string, count: number): void {
+    if (!sec.type_counts) sec.type_counts = {};
+    const n = Number(count) || 0;
+    if (n <= 0) delete sec.type_counts[type];
+    else sec.type_counts[type] = n;
   }
 
-  isPatternTypeSelected(sec: MockTestPatternSection, type: string): boolean {
-    return (sec.allowed_question_types ?? []).includes(type);
+  sectionTotal(sec: MockTestPatternSection): number {
+    const typesTotal = Object.values(sec.type_counts ?? {}).reduce((a, b) => a + b, 0);
+    const passageTotal = sec.passage_config ? sec.passage_config.questions_per_passage : 0;
+    return typesTotal + passageTotal;
+  }
+
+  togglePassageConfig(sec: MockTestPatternSection): void {
+    if (sec.passage_config) sec.passage_config = null;
+    else sec.passage_config = { questions_per_passage: 4, passage_ids: null };
   }
 
   patternTotalQuestions(): number {
-    return this.pattern.sections.reduce((s, sec) => s + (sec.question_count || 0), 0);
+    return this.pattern.sections.reduce((s, sec) => s + this.sectionTotal(sec), 0);
   }
 
   qid(q: QuestionBankItem): string {

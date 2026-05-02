@@ -47,15 +47,24 @@ export interface QuestionStats {
   }[];
 }
 
+export interface PassageSectionConfig {
+  questions_per_passage: number;
+  passage_ids?: string[] | null;
+}
+
 export interface MockTestPatternSection {
   name: string;
   chapter_ids: string[];
+  /** Legacy single-count; ignored when type_counts is provided */
   question_count: number;
+  /** Per-type question counts (new multi-type mode) */
+  type_counts?: Record<string, number> | null;
+  passage_config?: PassageSectionConfig | null;
   marks_pos: number;
   marks_neg: number;
   time_limit_min: number;
-  allowed_question_types?: string[];
-  question_count_per_type?: Record<string, number>;
+  /** Legacy filter; ignored when type_counts is provided */
+  allowed_question_types?: string[] | null;
 }
 
 export interface MockTestPattern {
@@ -74,10 +83,21 @@ export interface AdaptiveConfig {
   mock_test_pattern?: MockTestPattern | null;
 }
 
+export interface TypeDistribution {
+  MCQ: number;
+  MSQ: number;
+  TrueFalse: number;
+  Descriptive: number;
+  FillInBlanks: number;
+  passage_groups: number;
+  questions_per_passage: number;
+}
+
 export interface GenerateRequest {
   chapter_ids: string[];
   questions_per_chapter: number;
   difficulty_distribution?: { easy: number; medium: number; hard: number };
+  type_distribution?: TypeDistribution;
 }
 
 export interface PendingReviewResponse {

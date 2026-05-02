@@ -34,6 +34,8 @@ export class ApiService {
     return headers;
   }
 
+  getBaseUrl(): string { return this.baseUrl; }
+
   get<T>(url: string, params?: any, authToken?: string): Observable<T> {
     return this.http.get<T>(this.baseUrl + url, {
       headers: this.getHeaders(authToken),
