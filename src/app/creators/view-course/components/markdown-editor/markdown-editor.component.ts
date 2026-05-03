@@ -316,7 +316,9 @@ export class MarkdownEditorComponent implements OnInit {
       try {
         // Pre-process content to handle multiple line breaks
         let processedContent = this.content
-          // Convert \[...\] display math to $$...$$ (marked-katex-extension only handles $$)
+          // Replace vertical spacing specs like \[2mm] with \\ so row separators are preserved
+          .replace(/\\\[\s*-?\d+(?:\.\d+)?\s*(?:mm|cm|em|ex|pt|pc|in|bp|dd|cc|sp)\s*\]/g, '\\\\')
+          // Convert \[...\] display math to $$...$$ (spacing specs already replaced above)
           .replace(/\\\[([\s\S]*?)\\\]/g, (_m, inner) => `$$${inner.trim()}$$`)
           // Convert \(...\) inline math to $...$
           .replace(/\\\(([\s\S]*?)\\\)/g, (_m, inner) => `$${inner.trim()}$`)

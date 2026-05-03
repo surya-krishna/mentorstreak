@@ -4,6 +4,7 @@ import { marked } from 'marked';
 // Matches $$ display math $$ first, then $ inline math $
 // Also matches \[...\] display and \(...\) inline alternate notations
 const MATH_RE = /\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\$([^\$\n]+?)\$|\\\(([\s\S]+?)\\\)/g;
+const SPACING_SPEC_RE = /\\\[\s*-?\d+(?:\.\d+)?\s*(?:mm|cm|em|ex|pt|pc|in|bp|dd|cc|sp)\s*\]/g;
 
 /**
  * Render a string that may contain LaTeX math ($...$, $$...$$) and markdown.
@@ -15,6 +16,7 @@ const MATH_RE = /\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\$([^\$\n]+?)\$|\\\(([\s\
  */
 export function renderLatex(text: string): string {
   if (!text) return '';
+  text = text.replace(SPACING_SPEC_RE, '\\\\');
   try {
     const parts: string[] = [];
     let lastIndex = 0;
