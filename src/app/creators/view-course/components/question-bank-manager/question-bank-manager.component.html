@@ -191,6 +191,10 @@
       </div>
       <input [(ngModel)]="editingQuestion.correctAnswer" placeholder="Correct option text" class="w-full rounded border px-2 py-1.5 text-sm" />
       <textarea [(ngModel)]="editingQuestion.explanation" class="w-full rounded border px-2 py-1.5 text-sm" rows="2"></textarea>
+      <div *ngIf="editingQuestion.type === 'Passage'" class="space-y-1">
+        <label class="text-xs text-gray-600 font-medium">Passage text</label>
+        <textarea [(ngModel)]="editingQuestion.passage_text" class="w-full rounded border px-2 py-1.5 text-sm" rows="6" placeholder="Passage text shown to students above this question"></textarea>
+      </div>
       <div class="grid grid-cols-3 gap-2">
         <select [(ngModel)]="editingQuestion.difficulty" class="rounded border px-2 py-1.5 text-sm">
           <option *ngFor="let d of difficulties" [ngValue]="d">Difficulty {{ d }}</option>
@@ -254,13 +258,23 @@
         </label>
       </div>
 
+      <div class="grid grid-cols-2 gap-2 items-end mb-2">
+        <label class="text-xs" title="Number of reading passages to generate per chapter. Each passage includes multiple comprehension questions.">
+          Passage groups / chapter
+          <input [(ngModel)]="aiRequest.passage_groups" type="number" min="0" max="20" class="w-full rounded border px-2 py-1.5 text-sm" />
+        </label>
+        <label class="text-xs" [class.opacity-40]="aiRequest.passage_groups === 0" title="How many questions to generate for each passage.">
+          Questions / passage
+          <input [(ngModel)]="aiRequest.questions_per_passage" type="number" min="2" max="10" [disabled]="aiRequest.passage_groups === 0" class="w-full rounded border px-2 py-1.5 text-sm" />
+        </label>
+      </div>
 
       <button
         (click)="generate()"
         [disabled]="generating"
         class="mt-3 bg-purple-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50"
       >
-        {{ generating ? 'Generating…' : 'Generate ' + aiRequest.chapter_ids.length * aiRequest.questions_per_chapter + ' questions' }}
+        {{ generating ? 'Generating…' : 'Generate ' + aiRequest.chapter_ids.length * aiRequest.questions_per_chapter + ' questions' + (aiRequest.passage_groups > 0 ? ' + ' + aiRequest.chapter_ids.length * aiRequest.passage_groups + ' passages' : '') }}
       </button>
 
       <!-- Progress bar (shown while generation is running) -->
@@ -322,6 +336,7 @@
                 </li>
               </ul>
               <div *ngIf="q.explanation" class="text-xs text-gray-500 italic"><app-latex-text [text]="q.explanation" /></div>
+              <button *ngIf="q.passage_text" (click)="showPassage(q)" class="text-xs text-blue-600 underline text-left">View Passage</button>
               <div class="text-xs text-gray-500">Difficulty {{ q.difficulty }} · {{ q.bloom_level }} · {{ q.topic_tags?.join(', ') }}</div>
             </div>
             <div class="flex flex-col gap-1 min-w-[90px]">
@@ -418,5 +433,16 @@
   <div class="flex justify-between pt-3 border-t">
     <button (click)="back.emit()" class="text-sm text-gray-600">← Back</button>
     <button (click)="continue.emit()" class="bg-indigo-600 text-white text-sm rounded px-4 py-2">Continue →</button>
+  </div>
+</div>
+
+<!-- Passage popup overlay -->
+<div *ngIf="passagePopup" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" (click)="closePassage()">
+  <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full p-5 space-y-3 max-h-[80vh] overflow-y-auto" (click)="$event.stopPropagation()">
+    <div class="flex justify-between items-center">
+      <h3 class="font-semibold text-sm">Passage</h3>
+      <button (click)="closePassage()" class="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+    </div>
+    <div class="text-sm text-gray-700"><app-latex-text [text]="passagePopup.text" [block]="true"></app-latex-text></div>
   </div>
 </div>

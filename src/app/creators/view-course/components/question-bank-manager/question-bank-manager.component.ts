@@ -57,6 +57,8 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
     chapter_ids: [] as string[],
     questions_per_chapter: 20,
     distribution: { easy: 6, medium: 8, hard: 6 },
+    passage_groups: 0,
+    questions_per_passage: 4,
   };
   generating = false;
   genJobId: string | null = null;
@@ -66,6 +68,7 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
   genErrors: string[] = [];
   private pollSub?: Subscription;
   pending: PendingReviewResponse | null = null;
+  passagePopup: { text: string; passageId?: string } | null = null;
   selectedPending: Record<string, boolean> = {};
 
   // CSV tab
@@ -215,6 +218,15 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
     this.editingQuestion = null;
   }
 
+  showPassage(q: QuestionBankItem): void {
+    if (!q.passage_text) return;
+    this.passagePopup = { text: q.passage_text, passageId: q.passage_id ?? undefined };
+  }
+
+  closePassage(): void {
+    this.passagePopup = null;
+  }
+
   saveEdit(): void {
     if (!this.editingQuestion) return;
     const id = this.qid(this.editingQuestion);
@@ -222,6 +234,15 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
     const { _id, id: _id2, ...patch } = this.editingQuestion as any;
     this.adaptive.updateQuestion(this.courseId, id, patch).subscribe({
       next: () => {
+        // Sync passage_bank doc so adaptive test assembly uses updated text
+        const eq = this.editingQuestion!;
+        if (eq.passage_id && eq.passage_text && eq.chapter_id) {
+          this.adaptive.updatePassage(this.courseId, eq.passage_id, {
+            text: eq.passage_text,
+            chapter_id: eq.chapter_id,
+            difficulty: eq.difficulty ?? 3,
+          }).subscribe({ error: () => {} }); // best-effort; question already saved
+        }
         this.toast.success('Question updated');
         this.editingQuestion = null;
         this.loadQuestions();
@@ -301,6 +322,8 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
         chapter_ids: this.aiRequest.chapter_ids,
         questions_per_chapter: this.aiRequest.questions_per_chapter,
         difficulty_distribution: this.aiRequest.distribution,
+        passage_groups_per_chapter: this.aiRequest.passage_groups,
+        questions_per_passage: this.aiRequest.questions_per_passage,
       })
       .subscribe({
         next: (res: any) => {

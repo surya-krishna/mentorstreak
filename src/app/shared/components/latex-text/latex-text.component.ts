@@ -1,6 +1,6 @@
 import { Component, Input, OnChanges, ViewEncapsulation } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { renderLatex } from '../../utils/latex.util';
+import { renderLatex, renderLatexBlock } from '../../utils/latex.util';
 
 @Component({
   selector: 'app-latex-text',
@@ -14,11 +14,13 @@ import { renderLatex } from '../../utils/latex.util';
 })
 export class LatexTextComponent implements OnChanges {
   @Input() text = '';
+  @Input() block = false;
   rendered: SafeHtml = '';
 
   constructor(private sanitizer: DomSanitizer) {}
 
   ngOnChanges() {
-    this.rendered = this.sanitizer.bypassSecurityTrustHtml(renderLatex(this.text));
+    const html = this.block ? renderLatexBlock(this.text) : renderLatex(this.text);
+    this.rendered = this.sanitizer.bypassSecurityTrustHtml(html);
   }
 }

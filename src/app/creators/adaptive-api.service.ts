@@ -26,6 +26,9 @@ export interface QuestionBankItem {
   times_correct?: number;
   times_incorrect?: number;
   p_value?: number | null;
+  passage_id?: string | null;
+  passage_text?: string | null;
+  question_sub_type?: string | null;
 }
 
 export interface QuestionListResponse {
@@ -98,6 +101,8 @@ export interface GenerateRequest {
   questions_per_chapter: number;
   difficulty_distribution?: { easy: number; medium: number; hard: number };
   type_distribution?: TypeDistribution;
+  passage_groups_per_chapter?: number;
+  questions_per_passage?: number;
 }
 
 export interface PendingReviewResponse {
@@ -147,6 +152,22 @@ export interface AdaptiveTestCreatePayload {
   unattemptedMarks?: number;
   difficulty_targets?: { below: number; at: number; above: number };
   status?: string;
+}
+
+export interface ChapterNotes {
+  name: string;
+  points: string[];
+}
+
+export interface RevisionNotesResponse {
+  legacy: boolean;
+  /** Structured notes — present when legacy is false */
+  chapters?: Record<string, ChapterNotes>;
+  /** Flat markdown — present when legacy is true (old docs) */
+  legacy_notes?: string;
+  updated_at: string | null;
+  question_count: number;
+  message?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -224,6 +245,10 @@ export class AdaptiveApiService {
     return this.api.post(`${this.qbBase(courseId)}/${questionId}/regenerate`, {});
   }
 
+  updatePassage(courseId: string, passageId: string, payload: { text: string; chapter_id: string; difficulty: number; title?: string }) {
+    return this.api.put(`/courses/${courseId}/passages/${passageId}`, payload);
+  }
+
   listPendingReview(courseId: string, chapterId?: string, limit = 100): Observable<PendingReviewResponse> {
     const params: any = { limit };
     if (chapterId) params.chapter_id = chapterId;
@@ -265,5 +290,21 @@ export class AdaptiveApiService {
 
   createAdaptiveTest(courseId: string, payload: AdaptiveTestCreatePayload) {
     return this.api.post(`/creator/v2/courses/${courseId}/adaptive-tests`, payload);
+  }
+
+  // ---------- Revision Notes ----------
+  getRevisionNotes(courseId: string): Observable<RevisionNotesResponse> {
+    return this.api.get<RevisionNotesResponse>(`/api/v2/adaptive/revision-notes?course_id=${courseId}`);
+  }
+
+  generateRevisionNotes(courseId: string, options?: { chapter_ids?: string[]; bloom_levels?: string[]; days_lookback?: number }): Observable<RevisionNotesResponse> {
+    return this.api.post<RevisionNotesResponse>('/api/v2/adaptive/generate-revision-notes', {
+      course_id: courseId,
+      ...(options ?? {}),
+    });
+  }
+
+  hasRevisionNotes(courseId: string): Observable<{ has_notes: boolean }> {
+    return this.api.get<{ has_notes: boolean }>(`/api/v2/adaptive/has-notes?course_id=${courseId}`);
   }
 }

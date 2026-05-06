@@ -55,3 +55,47 @@ export function renderLatex(text: string): string {
     return text;
   }
 }
+
+/**
+ * Render block-level markdown (headers, bullet lists, bold, etc.) that also
+ * contains LaTeX math. Uses marked.parse() instead of marked.parseInline() so
+ * block structure is preserved. Math is still extracted before markdown parsing
+ * to prevent GFM rules from corrupting formulas.
+ *
+ * Use this for multi-line LLM-generated content (revision notes, explanations).
+ * Use renderLatex() for single-line question/option text.
+ */
+export function renderLatexBlock(text: string): string {
+  if (!text) return '';
+  text = text.replace(SPACING_SPEC_RE, '\\\\');
+  try {
+    // Replace each math segment with a placeholder, render the markdown,
+    // then swap placeholders back with KaTeX-rendered HTML.
+    const mathCache: string[] = [];
+    const PLACEHOLDER_RE = /\x00MATH(\d+)\x00/g;
+
+    const withPlaceholders = text.replace(MATH_RE, (match, d1, d2, i1, i2) => {
+      const isDisplay = d1 !== undefined || d2 !== undefined;
+      const formula = (d1 ?? d2 ?? i1 ?? i2).trim();
+      let rendered: string;
+      try {
+        rendered = katex.renderToString(formula, {
+          displayMode: isDisplay,
+          throwOnError: false,
+          errorColor: '#cc0000',
+          strict: false,
+        });
+      } catch {
+        rendered = match;
+      }
+      const idx = mathCache.length;
+      mathCache.push(rendered);
+      return `\x00MATH${idx}\x00`;
+    });
+
+    const html = marked.parse(withPlaceholders) as string;
+    return html.replace(PLACEHOLDER_RE, (_, idx) => mathCache[Number(idx)] ?? '');
+  } catch {
+    return text;
+  }
+}
