@@ -1005,12 +1005,14 @@ export class TestManagerComponent implements OnInit, OnChanges {
         const t = this.currentTest;
         if (!t) return false;
         if (!t.title || !String(t.title).trim().length) return false;
+        // Adaptive test: uses total_duration_min instead of duration
+        if (t.is_adaptive) {
+            if (!(Number(t.total_duration_min) > 0)) return false;
+            const sections: any[] = t.adaptive_sections || [];
+            return sections.length > 0 && sections.some((s: any) => s.chapter_ids && s.chapter_ids.length > 0);
+        }
         if (!(Number(t.duration) > 0)) return false;
         if (!t.type) return false;
-        // Adaptive test: only need source chapters
-        if (t.is_adaptive) {
-            return !!(t.source_chapters && t.source_chapters.length > 0);
-        }
         if (t.type === 'CHAPTER') {
             if (!t.selectedSubject || !String(t.selectedSubject).trim().length) return false;
             if (!t.chapterId) return false;
