@@ -192,6 +192,18 @@ export class TestManagerComponent implements OnInit, OnChanges {
                             this.currentTest.adaptive_sections = [{ name: 'Section 1', chapter_ids: [], question_count: 20, marks_pos: 1, marks_neg: 0, time_limit_min: 0 }];
                         }
                     }
+                    // Normalize legacy passage_config (old format has only questions_per_passage,
+                    // new UI format needs num_passages + passages array)
+                    (this.currentTest.adaptive_sections || []).forEach((sec: any) => {
+                        if (sec.passage_config && !sec.passage_config.passages) {
+                            const qpp = sec.passage_config.questions_per_passage ?? 4;
+                            const n = sec.passage_config.num_passages ?? 1;
+                            sec.passage_config = {
+                                num_passages: n,
+                                passages: Array.from({ length: n }, () => ({ questions_per_passage: qpp }))
+                            };
+                        }
+                    });
                     if (!this.currentTest.total_duration_min) {
                         this.currentTest.total_duration_min = this.currentTest.mock_pattern?.total_duration_min
                             || this.currentTest.duration_min
