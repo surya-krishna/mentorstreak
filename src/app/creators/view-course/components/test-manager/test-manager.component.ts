@@ -6,6 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../../../api-service';
 import { ModalService } from '../../../../modal.service';
 import { ToastService } from '../../../../toast.service';
+import { AdaptiveApiService, AdaptiveConfig } from '../../../adaptive-api.service';
 
 @Component({
     selector: 'app-test-manager',
@@ -17,21 +18,28 @@ export class TestManagerComponent implements OnInit, OnChanges {
     @Input() courseId: string = '';
     @Input() course: any = null;
     @Input() testId: string | null = null;
-    @Input() action: 'edit' | 'create' | 'auto' | null = null;
+    @Input() action: 'edit' | 'create' | 'adaptive' | null = null;
     @Output() saved = new EventEmitter<void>();
     @Output() cancelled = new EventEmitter<void>();
 
     currentTest: any = null;
     isLoadingDetails: boolean = false;
 
-    // Auto Generate
-    showAutoGenerateModal: boolean = false;
-    autoGenConfig: any = {
-        numSections: 1,
-        sections: []
+    // Adaptive Test Creation
+    showAdaptiveModal = false;
+    adaptiveForm: any = {
+        title: '',
+        instructions: '',
+        total_duration_min: 30,
+        can_navigate_between_sections: true,
+        hasNegativeMarking: false,
+        scoringFormula: 'standard',
+        unattemptedMarks: 0,
+        sections: [{ name: 'Section 1', chapter_ids: [] as string[], question_count: 20, marks_pos: 1, marks_neg: 0, time_limit_min: 0 }]
     };
-    isGenerating: boolean = false;
-    generationStatus: string = '';
+    adaptiveCourseConfig: AdaptiveConfig | null = null;
+    isSavingAdaptive = false;
+    showAdaptiveErrors = false;
 
     // Image Upload
     isUploadingImage: boolean = false;
@@ -53,7 +61,6 @@ export class TestManagerComponent implements OnInit, OnChanges {
     subjects: string[] = [];
     // Validation flags
     showManualErrors: boolean = false;
-    showAutoErrors: boolean = false;
 
     // For OVERALL tests allow selecting subjects at test level
     // currentTest.selectedSubjects: string[] expected
@@ -66,7 +73,8 @@ export class TestManagerComponent implements OnInit, OnChanges {
     constructor(
         private api: ApiService,
         private modal: ModalService,
-        private toast: ToastService
+        private toast: ToastService,
+        private adaptiveApi: AdaptiveApiService
     ) { }
 
     ngOnInit() {
@@ -87,8 +95,8 @@ export class TestManagerComponent implements OnInit, OnChanges {
         } else if (changes['action']) {
             if (this.action === 'create') {
                 this.initNewTest();
-            } else if (this.action === 'auto') {
-                this.openAutoGenerate();
+            } else if (this.action === 'adaptive') {
+                this.initNewAdaptiveTest();
             }
         }
     }
@@ -121,6 +129,21 @@ export class TestManagerComponent implements OnInit, OnChanges {
                 this.tests = Array.isArray(res) ? res : (res?.items || []);
             }, error: (err: any) => { console.error('Failed to load tests', err); this.tests = []; }
         });
+    }
+
+    initNewAdaptiveTest() {
+        this.currentTest = {
+            title: '',
+            instructions: '',
+            hasNegativeMarking: false,
+            scoringFormula: 'standard',
+            unattemptedMarks: 0,
+            status: 'draft',
+            is_adaptive: true,
+            total_duration_min: 30,
+            can_navigate_between_sections: true,
+            adaptive_sections: [{ name: 'Section 1', chapter_ids: [] as string[], question_count: 20, marks_pos: 1, marks_neg: 0, time_limit_min: 0 }],
+        };
     }
 
     initNewTest() {
@@ -158,6 +181,40 @@ export class TestManagerComponent implements OnInit, OnChanges {
                 if (this.currentTest.unattemptedMarks === undefined) this.currentTest.unattemptedMarks = 0;
                 if (!this.currentTest.sections) this.currentTest.sections = [];
 
+                // Adaptive test: load sections config
+                if (this.currentTest.is_adaptive) {
+                    // Populate adaptive_sections from stored adaptive_sections or mock_pattern.sections
+                    if (!this.currentTest.adaptive_sections || !this.currentTest.adaptive_sections.length) {
+                        const pattern = this.currentTest.mock_pattern;
+                        if (pattern?.sections?.length) {
+                            this.currentTest.adaptive_sections = pattern.sections;
+                        } else {
+                            this.currentTest.adaptive_sections = [{ name: 'Section 1', chapter_ids: [], question_count: 20, marks_pos: 1, marks_neg: 0, time_limit_min: 0 }];
+                        }
+                    }
+                    // Normalize legacy passage_config (old format has only questions_per_passage,
+                    // new UI format needs num_passages + passages array)
+                    (this.currentTest.adaptive_sections || []).forEach((sec: any) => {
+                        if (sec.passage_config && !sec.passage_config.passages) {
+                            const qpp = sec.passage_config.questions_per_passage ?? 4;
+                            const n = sec.passage_config.num_passages ?? 1;
+                            sec.passage_config = {
+                                num_passages: n,
+                                passages: Array.from({ length: n }, () => ({ questions_per_passage: qpp }))
+                            };
+                        }
+                    });
+                    if (!this.currentTest.total_duration_min) {
+                        this.currentTest.total_duration_min = this.currentTest.mock_pattern?.total_duration_min
+                            || this.currentTest.duration_min
+                            || this.currentTest.duration
+                            || 30;
+                    }
+                    if (this.currentTest.can_navigate_between_sections === undefined) {
+                        this.currentTest.can_navigate_between_sections = this.currentTest.mock_pattern?.can_navigate_between_sections ?? true;
+                    }
+                }
+
                 this.currentTest.sections.forEach((s: any) => {
                     if (s.timeLimit === undefined) s.timeLimit = 0;
                     if (!s.selectedChapters) s.selectedChapters = [];
@@ -193,22 +250,61 @@ export class TestManagerComponent implements OnInit, OnChanges {
         });
     }
 
+    buildTestPayload(): any {
+        const t = this.currentTest;
+        const payload: any = {
+            title: t.title,
+            type: t.type,
+            duration: t.duration,
+            instructions: t.instructions || '',
+            hasNegativeMarking: t.hasNegativeMarking || false,
+            scoringFormula: t.scoringFormula || 'Raw Score',
+            unattemptedMarks: t.unattemptedMarks || 0,
+            sections: t.sections || [],
+            status: t.status || 'draft',
+            chapterId: t.chapterId || null,
+            selectedChapters: t.selectedChapters || [],
+        };
+        if (t.is_adaptive) {
+            // Replace manual fields with adaptive schema
+            delete payload.type;
+            delete payload.duration;
+            delete payload.sections;
+            delete payload.chapterId;
+            delete payload.selectedChapters;
+            delete payload.hasNegativeMarking;
+            payload.sections = t.adaptive_sections || [];
+            payload.total_duration_min = t.total_duration_min || 30;
+            payload.can_navigate_between_sections = t.can_navigate_between_sections ?? true;
+            payload.hasNegativeMarking = t.hasNegativeMarking || false;
+            payload.scoringFormula = t.scoringFormula || 'standard';
+            payload.unattemptedMarks = t.unattemptedMarks || 0;
+            if (t.difficulty_targets) payload.difficulty_targets = t.difficulty_targets;
+        }
+        return payload;
+    }
+
     saveTest() {
         this.actionMessage = 'Saving test...';
+        const payload = this.buildTestPayload();
+        const isAdaptive = this.currentTest.is_adaptive;
+
         if (this.currentTest.id) {
-            // Update
-            this.api.put(`/creator/v2/tests/${this.currentTest.id}`, this.currentTest).subscribe({
-                next: (res: any) => {
-                    this.finishSaveTest();
-                },
+            const url = isAdaptive
+                ? `/creator/v2/adaptive-tests/${this.currentTest.id}`
+                : `/creator/v2/tests/${this.currentTest.id}`;
+            this.api.put(url, payload).subscribe({
+                next: () => this.finishSaveTest(),
                 error: () => {
                     this.actionMessage = 'Failed to save test';
                     this.toast.error('Failed to save test');
                 }
             });
         } else {
-            // Create
-            this.api.post(`/creator/v2/courses/${this.courseId}/tests`, this.currentTest).subscribe({
+            const url = isAdaptive
+                ? `/creator/v2/courses/${this.courseId}/adaptive-tests`
+                : `/creator/v2/courses/${this.courseId}/tests`;
+            this.api.post(url, payload).subscribe({
                 next: (res: any) => {
                     this.currentTest.id = res.id;
                     this.finishSaveTest();
@@ -434,35 +530,201 @@ export class TestManagerComponent implements OnInit, OnChanges {
         this.currentTest.chapterId = undefined;
     }
 
-    // Auto Generate
-    openAutoGenerate() {
-        const proceed = () => {
-            this.currentTest = null;
-            this.showAutoGenerateModal = true;
-            this.autoGenConfig = {
-                numSections: 1,
-                sections: [{
-                    name: 'Section 1',
-                    questionCount: 10,
-                    typeDistribution: this.createEmptyTypeDistribution(),
-                    chapters: [],
-                    selectedSubjects: [],
-                    marksPos: 1,
-                    marksNeg: 0,
-                    unattemptedMarks: 0,
-                    timeLimit: 0
-                }]
-            };
-            this.autoGenConfig.sections.forEach((s: any) => this.ensureChapterDistribution(s));
-        };
+    // Adaptive marking per-type helpers
+    readonly markableQuestionTypes = ['MCQ', 'MSQ', 'True/False', 'Fill-in-the-Blanks', 'Matching', 'Sequence', 'Descriptive'];
 
-        if (this.currentTest) {
-            this.modal.confirm('Discard current changes?').then(confirmed => {
-                if (confirmed) proceed();
-            });
-        } else {
-            proceed();
+    onToggleMarkingPerType() {
+        if (!this.currentTest) return;
+        if (this.currentTest.useMarkingPerType && !this.currentTest.markingPerType) {
+            const m: any = {};
+            this.markableQuestionTypes.forEach(t => { m[t] = { pos: this.currentTest.marksPos ?? 1, neg: this.currentTest.marksNeg ?? 0 }; });
+            this.currentTest.markingPerType = m;
         }
+    }
+
+    // Adaptive section management (edit form)
+    addAdaptiveSection() {
+        if (!this.currentTest) return;
+        if (!this.currentTest.adaptive_sections) this.currentTest.adaptive_sections = [];
+        this.currentTest.adaptive_sections.push({
+            name: `Section ${this.currentTest.adaptive_sections.length + 1}`,
+            chapter_ids: [],
+            question_count: 0,
+            type_counts: { MCQ: 10, MSQ: 5, 'True/False': 5 },
+            passage_config: null,
+            marks_pos: 1,
+            marks_neg: 0,
+            time_limit_min: 0,
+        });
+    }
+
+    getAdaptiveTypeCount(sec: any, type: string): number {
+        return (sec.type_counts ?? {})[type] ?? 0;
+    }
+
+    setAdaptiveTypeCount(sec: any, type: string, count: number): void {
+        if (!sec.type_counts) sec.type_counts = {};
+        const n = Number(count) || 0;
+        if (n <= 0) delete sec.type_counts[type];
+        else sec.type_counts[type] = n;
+    }
+
+    adaptiveSectionTotal(sec: any): number {
+        const typesTotal = Object.values(sec.type_counts ?? {}).reduce((a: number, b: any) => a + Number(b), 0);
+        const passageTotal = (sec.passage_config?.passages ?? []).reduce((sum: number, p: any) => sum + (Number(p.questions_per_passage) || 0), 0);
+        return typesTotal + passageTotal;
+    }
+
+    toggleAdaptivePassageConfig(sec: any): void {
+        if (sec.passage_config) sec.passage_config = null;
+        else sec.passage_config = { num_passages: 1, passages: [{ questions_per_passage: 4 }] };
+    }
+
+    setAdaptivePassageCount(sec: any, count: number): void {
+        if (!sec.passage_config) return;
+        const n = Math.max(1, Math.min(Number(count) || 1, 20));
+        sec.passage_config.num_passages = n;
+        const current: any[] = sec.passage_config.passages || [];
+        while (current.length < n) current.push({ questions_per_passage: 4 });
+        current.splice(n);
+        sec.passage_config.passages = current;
+    }
+
+    readonly renderableTypes = ['MCQ', 'MSQ', 'True/False', 'Descriptive', 'Fill-in-the-Blanks'];
+
+    removeAdaptiveSection(index: number) {
+        if (!this.currentTest?.adaptive_sections) return;
+        this.currentTest.adaptive_sections.splice(index, 1);
+    }
+
+    toggleAdaptiveSectionChapter(sectionIndex: number, chapterId: string) {
+        const sec = this.currentTest?.adaptive_sections?.[sectionIndex];
+        if (!sec) return;
+        if (!sec.chapter_ids) sec.chapter_ids = [];
+        const idx = sec.chapter_ids.indexOf(chapterId);
+        if (idx === -1) sec.chapter_ids.push(chapterId);
+        else sec.chapter_ids.splice(idx, 1);
+    }
+
+    isAdaptiveSectionChapterSelected(sectionIndex: number, chapterId: string): boolean {
+        return this.currentTest?.adaptive_sections?.[sectionIndex]?.chapter_ids?.includes(chapterId) ?? false;
+    }
+
+    // Adaptive section management (create modal form)
+    addAdaptiveFormSection() {
+        if (!this.adaptiveForm.sections) this.adaptiveForm.sections = [];
+        this.adaptiveForm.sections.push({
+            name: `Section ${this.adaptiveForm.sections.length + 1}`,
+            chapter_ids: [],
+            question_count: 0,
+            type_counts: { MCQ: 10, MSQ: 5, 'True/False': 5 },
+            passage_config: null,
+            marks_pos: 1,
+            marks_neg: 0,
+            time_limit_min: 0,
+        });
+    }
+
+    removeAdaptiveFormSection(index: number) {
+        this.adaptiveForm.sections?.splice(index, 1);
+    }
+
+    toggleAdaptiveFormChapter(sectionIndex: number, chapterId: string) {
+        const sec = this.adaptiveForm.sections?.[sectionIndex];
+        if (!sec) return;
+        if (!sec.chapter_ids) sec.chapter_ids = [];
+        const idx = sec.chapter_ids.indexOf(chapterId);
+        if (idx === -1) sec.chapter_ids.push(chapterId);
+        else sec.chapter_ids.splice(idx, 1);
+    }
+
+    isAdaptiveFormChapterSelected(sectionIndex: number, chapterId: string): boolean {
+        return this.adaptiveForm.sections?.[sectionIndex]?.chapter_ids?.includes(chapterId) ?? false;
+    }
+
+    // Adaptive Test Creation
+    openAdaptiveModal() {
+        this.currentTest = null;
+        this.showAdaptiveModal = true;
+        this.showAdaptiveErrors = false;
+        this.adaptiveForm = {
+            title: '',
+            instructions: '',
+            total_duration_min: this.adaptiveCourseConfig?.default_duration_min ?? 30,
+            can_navigate_between_sections: true,
+            hasNegativeMarking: false,
+            scoringFormula: 'standard',
+            unattemptedMarks: 0,
+            sections: [{ name: 'Section 1', chapter_ids: [] as string[], question_count: this.adaptiveCourseConfig?.default_question_count ?? 20, marks_pos: 1, marks_neg: 0, time_limit_min: 0 }]
+        };
+        if (!this.adaptiveCourseConfig && this.courseId) {
+            this.adaptiveApi.getAdaptiveConfig(this.courseId).subscribe({
+                next: (res) => {
+                    this.adaptiveCourseConfig = res.adaptive_config;
+                    if (this.adaptiveForm.sections?.[0]) {
+                        this.adaptiveForm.sections[0].question_count = res.adaptive_config.default_question_count;
+                    }
+                    this.adaptiveForm.total_duration_min = res.adaptive_config.default_duration_min;
+                },
+                error: () => {}
+            });
+        }
+    }
+
+    closeAdaptiveModal() {
+        this.showAdaptiveModal = false;
+        this.action = null;
+    }
+
+    toggleAdaptiveChapter(chapterId: string) {
+        const idx = this.adaptiveForm.source_chapters.indexOf(chapterId);
+        if (idx === -1) this.adaptiveForm.source_chapters.push(chapterId);
+        else this.adaptiveForm.source_chapters.splice(idx, 1);
+    }
+
+    isAdaptiveChapterSelected(chapterId: string): boolean {
+        return this.adaptiveForm.source_chapters.includes(chapterId);
+    }
+
+    adaptiveFormValid(): boolean {
+        const sections: any[] = this.adaptiveForm.sections || [];
+        return !!(
+            this.adaptiveForm.title?.trim() &&
+            sections.length > 0 &&
+            sections.every((s: any) => s.chapter_ids?.length > 0 && s.question_count > 0) &&
+            this.adaptiveForm.total_duration_min > 0
+        );
+    }
+
+    saveAdaptiveTest() {
+        this.showAdaptiveErrors = true;
+        if (!this.adaptiveFormValid()) return;
+        this.isSavingAdaptive = true;
+        const payload: any = {
+            title: this.adaptiveForm.title.trim(),
+            instructions: this.adaptiveForm.instructions || '',
+            sections: this.adaptiveForm.sections,
+            total_duration_min: this.adaptiveForm.total_duration_min,
+            can_navigate_between_sections: this.adaptiveForm.can_navigate_between_sections ?? true,
+            hasNegativeMarking: this.adaptiveForm.hasNegativeMarking || false,
+            scoringFormula: this.adaptiveForm.scoringFormula || 'standard',
+            unattemptedMarks: this.adaptiveForm.unattemptedMarks || 0,
+            status: 'draft'
+        };
+        this.adaptiveApi.createAdaptiveTest(this.courseId, payload).subscribe({
+            next: () => {
+                this.isSavingAdaptive = false;
+                this.showAdaptiveModal = false;
+                this.action = null;
+                this.toast.success('Adaptive test created');
+                this.loadTests();
+                this.saved.emit();
+            },
+            error: (err: any) => {
+                this.isSavingAdaptive = false;
+                this.toast.error(err?.error?.detail || 'Failed to create adaptive test');
+            }
+        });
     }
 
     createEmptyTypeDistribution() {
@@ -470,35 +732,6 @@ export class TestManagerComponent implements OnInit, OnChanges {
         (this.questionTypes || []).forEach((t: string) => map[t] = 0);
         if (map['MCQ'] !== undefined) map['MCQ'] = 10;
         return map;
-    }
-
-    updateAutoGenSections() {
-        const currentLen = this.autoGenConfig.sections.length;
-        const targetLen = this.autoGenConfig.numSections;
-
-        if (targetLen > currentLen) {
-            for (let i = currentLen; i < targetLen; i++) {
-                this.autoGenConfig.sections.push({
-                    name: `Section ${i + 1}`,
-                    questionCount: 10,
-                    typeDistribution: this.createEmptyTypeDistribution(),
-                    chapters: [],
-                    chapterDistribution: {},
-                    marksPos: 1,
-                    marksNeg: 0,
-                    unattemptedMarks: 0,
-                    timeLimit: 0
-                });
-            }
-        } else if (targetLen < currentLen) {
-            this.autoGenConfig.sections.splice(targetLen);
-        }
-    }
-
-    clampQuestionCount(sec: any) {
-        if (!sec) return;
-        sec.questionCount = Math.min(Math.max(Number(sec.questionCount) || 0, 0), 30);
-        this.ensureChapterDistribution(sec);
     }
 
     getChapterName(id: any) {
@@ -577,65 +810,6 @@ export class TestManagerComponent implements OnInit, OnChanges {
         return out;
     }
 
-    generateTest() {
-        this.initNewTest();
-        this.currentTest.title = 'Auto Generated Test';
-        this.currentTest.sections = [];
-
-        this.autoGenConfig.sections.forEach((secCfg: any, idx: number) => {
-            if (!secCfg.typeDistribution) secCfg.typeDistribution = this.createEmptyTypeDistribution();
-            if (!secCfg.chapters) secCfg.chapters = [];
-
-            secCfg.questionCount = Math.min(Number(secCfg.questionCount) || 0, 30);
-
-            const allocation = this.computeAllocation(secCfg);
-            const chapters = secCfg.chapters || [];
-
-            const newSection: any = {
-                name: secCfg.name || `Section ${idx + 1}`,
-                questions: [],
-                useUniformMarking: true,
-                uniformMarksPos: secCfg.marksPos,
-                uniformMarksNeg: secCfg.marksNeg,
-                timeLimit: secCfg.timeLimit || 0,
-                selectedChapters: secCfg.chapters || [],
-                unattemptedMarks: secCfg.unattemptedMarks || 0
-            };
-
-            const makeQuestion = (type: string, ch: any, iNum: number) => ({
-                type,
-                text: `Generated ${type} Question ${iNum + 1} (Chapter: ${ch ? ch.name : 'N/A'})`,
-                options: [{ text: 'Option A', isCorrect: false }, { text: 'Option B', isCorrect: false }],
-                marksPos: secCfg.marksPos,
-                marksNeg: secCfg.marksNeg,
-                pairs: [{ left: '', right: '' }],
-                sequenceItems: [{ text: '', order: 1 }],
-                blanks: [],
-                correctAnswer: '',
-                explanation: '',
-                image: null,
-                chapterId: ch ? ch.id : null
-            });
-
-            // Per-chapter distribution removed: allocate questions by section only
-            Object.keys(allocation).forEach(type => {
-                const count = Number(allocation[type]) || 0;
-                for (let i = 0; i < count; i++) {
-                    newSection.questions.push(makeQuestion(type, null, i));
-                }
-            });
-            this.currentTest.sections.push(newSection);
-        });
-
-        this.showAutoGenerateModal = false;
-        this.action=null;
-        this.toast.success('Test structure generated (draft)');
-    }
-
-    closeAutoGen(){
-        this.showAutoGenerateModal = false;
-        this.cancelled.emit();
-    }
 
     // Image Upload
     triggerImageUpload(question: any) {
@@ -831,11 +1005,24 @@ export class TestManagerComponent implements OnInit, OnChanges {
         });
     }
 
+    toggleAdaptiveSourceChapter(chapterId: string) {
+        if (!this.currentTest.source_chapters) this.currentTest.source_chapters = [];
+        const idx = this.currentTest.source_chapters.indexOf(chapterId);
+        if (idx === -1) this.currentTest.source_chapters.push(chapterId);
+        else this.currentTest.source_chapters.splice(idx, 1);
+    }
+
     // Validation for manual create/edit test
     manualTestValid(): boolean {
         const t = this.currentTest;
         if (!t) return false;
         if (!t.title || !String(t.title).trim().length) return false;
+        // Adaptive test: uses total_duration_min instead of duration
+        if (t.is_adaptive) {
+            if (!(Number(t.total_duration_min) > 0)) return false;
+            const sections: any[] = t.adaptive_sections || [];
+            return sections.length > 0 && sections.some((s: any) => s.chapter_ids && s.chapter_ids.length > 0);
+        }
         if (!(Number(t.duration) > 0)) return false;
         if (!t.type) return false;
         if (t.type === 'CHAPTER') {
@@ -953,35 +1140,6 @@ export class TestManagerComponent implements OnInit, OnChanges {
     }
 
 
-    autoGenValid(): boolean {
-        const ag = this.autoGenConfig;
-        if (!ag) return false;
-        if (!(Number(ag.numSections) >= 1)) return false;
-        for (const s of ag.sections) {
-            if (!(Number(s.questionCount) > 0)) return false;
-            // subjects must be selected per user's requirement
-            if (!s.selectedSubjects || !s.selectedSubjects.length) return false;
-            // chapters must be selected
-            if (!s.chapters || !s.chapters.length) return false;
-            // ensure type distribution matches total questions exactly
-            const totalDist = this.getDistTotal(s);
-            if (Number(totalDist) !== Number(s.questionCount)) return false;
-        }
-        // ensure overall questions across sections is > 0
-        if (this.getAutoGenTotalQuestions() <= 0) return false;
-        return true;
-    }
-
-    // Returns total questions across all auto-gen sections
-    getAutoGenTotalQuestions(): number {
-        if (!this.autoGenConfig || !this.autoGenConfig.sections) return 0;
-        return this.autoGenConfig.sections.reduce((acc: number, s: any) => acc + (Number(s.questionCount) || 0), 0);
-    }
-
-    totalAutoGenQuestions(): number {
-        if (!this.autoGenConfig || !this.autoGenConfig.sections) return 0;
-        return this.autoGenConfig.sections.reduce((acc: number, s: any) => acc + (Number(s.questionCount) || 0), 0);
-    }
 
 
 
@@ -992,34 +1150,4 @@ export class TestManagerComponent implements OnInit, OnChanges {
         }
     }
 
-    attemptGenerate() {
-        this.showAutoErrors = true;
-        if (!this.autoGenValid()) return;
-        this.isGenerating = true;
-        const payload = {
-            ...this.autoGenConfig,
-            sections: this.autoGenConfig.sections.map((sec: any) => ({
-                ...sec,
-                selectedSubjects: this.autoGenConfig.testType === 'CHAPTER' ? [sec.selectedSubjects] : sec.selectedSubjects,
-                chapters: this.autoGenConfig.testType === 'CHAPTER' ? [sec.chapters] : sec.chapters
-            })),
-            testType: this.autoGenConfig.testType
-        };
-        this.api.post(`/creator/v2/courses/${this.courseId}/auto-generate-test`, payload).subscribe({
-            next: (res: any) => {
-                this.isGenerating = false;
-                this.showAutoGenerateModal = false;
-                this.action= null;
-                this.showAutoGenSuccessPopup();
-            },
-            error: (err: any) => {
-                this.isGenerating = false;
-                this.toast.error('Failed to auto-generate test');
-            }
-        });
-    }
-
-    showAutoGenSuccessPopup() {
-        this.modal.alert('Test generation initiated. Please continue with your next activity.');
-    }
 }

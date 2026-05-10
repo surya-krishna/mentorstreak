@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { marked } from 'marked';
 import markedKatex from 'marked-katex-extension';
+import { ApiService } from '../../../../api-service';
 
 @Component({
   selector: 'app-markdown-editor',
@@ -269,12 +270,13 @@ import markedKatex from 'marked-katex-extension';
 export class MarkdownEditorComponent implements OnInit {
   @Input() content: string = '';
   @Input() editorHeight: string = '300px';
+  @Input() courseId: string = '';
   @Output() contentChange = new EventEmitter<string>();
 
   activeTab: 'editor' | 'preview' = 'editor';
   renderedContent: SafeHtml = '';
 
-  constructor(private sanitizer: DomSanitizer) {
+  constructor(private sanitizer: DomSanitizer, private api: ApiService) {
     // Configure marked with KaTeX extension for math formula support
     const katexOptions = {
       throwOnError: false,
@@ -314,12 +316,37 @@ export class MarkdownEditorComponent implements OnInit {
       try {
         // Pre-process content to handle multiple line breaks
         let processedContent = this.content
+          // Replace vertical spacing specs like \[2mm] with \\ so row separators are preserved
+          .replace(/\\\[\s*-?\d+(?:\.\d+)?\s*(?:mm|cm|em|ex|pt|pc|in|bp|dd|cc|sp)\s*\]/g, '\\\\')
+          // Convert \[...\] display math to $$...$$ (spacing specs already replaced above)
+          .replace(/\\\[([\s\S]*?)\\\]/g, (_m, inner) => `$$${inner.trim()}$$`)
+          // Convert \(...\) inline math to $...$
+          .replace(/\\\(([\s\S]*?)\\\)/g, (_m, inner) => `$${inner.trim()}$`)
           // Convert double line breaks to proper paragraph breaks
           .replace(/\n\s*\n/g, '\n\n')
+          // Collapse newlines inside $$...$$ blocks so marked-katex can parse them,
+          // but preserve LaTeX line-break markers (\\) used in aligned/array environments.
+          // Lines ending with \\ keep their line-break; lines ending with \ get the missing \ added.
+          .replace(/\$\$([\s\S]*?)\$\$/g, (_m, inner) => {
+            const normalized = inner.trim()
+              .replace(/\\\\\n/g, '\\\\ ')   // \\ + newline → \\ + space (line break preserved)
+              .replace(/\\\n/g, '\\\\ ')     // \ + newline → \\ + space (complete missing backslash)
+              .replace(/\n/g, ' ');          // remaining bare newlines → space
+            return `$$${normalized}$$`;
+          })
           // Ensure proper spacing around math formulas
-          .replace(/(\$\$[\s\S]*?\$\$)/g, '\n\n$1\n\n')
+          .replace(/(\$\$[^$]*?\$\$)/g, '\n\n$1\n\n')
           .replace(/(\$[^$\n]*?\$)/g, ' $1 ');
-        
+
+        // Rewrite relative image paths to full API URLs
+        if (this.courseId) {
+          const baseUrl = this.api.getBaseUrl();
+          processedContent = processedContent.replace(
+            /!\[([^\]]*)\]\((images\/[^)]+)\)/g,
+            (_m, alt, path) => `![${alt}](${baseUrl}/master/v2/files?filePath=${encodeURIComponent(this.courseId + '/' + path)})`
+          );
+        }
+
         const html = marked.parse(processedContent) as string;
         this.renderedContent = this.sanitizer.bypassSecurityTrustHtml(html);
       } catch (error) {

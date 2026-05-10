@@ -14,6 +14,8 @@ import { CourseInfoComponent } from '../view-course/components/course-info/cours
 import { SubjectManagerComponent } from '../view-course/components/subject-manager/subject-manager.component';
 import { ChapterManagerComponent } from '../view-course/components/chapter-manager/chapter-manager.component';
 import { TestManagerComponent } from '../view-course/components/test-manager/test-manager.component';
+import { QuestionBankManagerComponent } from '../view-course/components/question-bank-manager/question-bank-manager.component';
+import { AdaptiveAnalyticsComponent } from '../view-course/components/adaptive-analytics/adaptive-analytics.component';
 import { COURSE_PUBLISH_TNC } from '../view-course/terms-and-conditions';
 import { forkJoin } from 'rxjs';
 import markedKatex from "marked-katex-extension";
@@ -37,7 +39,9 @@ const options = {
     SubjectManagerComponent,
     ChapterManagerComponent,
     TestManagerComponent,
-    PackageManagerComponent
+    PackageManagerComponent,
+    QuestionBankManagerComponent,
+    AdaptiveAnalyticsComponent
   ],
   templateUrl: './new-course.component.html',
   styleUrls: ['./new-course.component.scss']
@@ -79,7 +83,7 @@ export class NewCourseComponent implements OnInit, OnDestroy {
   // Test Manager State
   tests: any[] = [];
   selectedTestId: string | null = null;
-  testAction: 'edit' | 'create' | 'auto' | null = null;
+  testAction: 'edit' | 'create' | 'adaptive' | null = null;
   showNewTestOptions: boolean = false;
 
   // Preview/Chapter Editor State
@@ -365,9 +369,19 @@ export class NewCourseComponent implements OnInit, OnDestroy {
       if (this.step === 3 && !this.chaptersValidState) return; // block advancing from Chapters
     }
     this.step = n;
-    if (this.step === 5) {
+    if (this.step === 6) {
       this.loadTests();
     }
+  }
+
+  openAdaptiveTestCreate() {
+    this.selectedTestId = null;
+    this.testAction = null;
+    this.showNewTestOptions = false;
+    this.setStep(6);
+    setTimeout(() => {
+      this.testAction = 'adaptive';
+    }, 0);
   }
 
   // Handlers for validityChange emitted by child components
@@ -610,20 +624,11 @@ convertQuillHtmlToMarkdown(html: string): string {
     this.selectedTestId = null;
     this.testAction = 'create';
     this.showNewTestOptions = false;
-    // ensure TestManager is visible so it picks up the action
-    this.setStep(5);
+    this.setStep(6);
   }
 
   openAutoGenerate() {
-    this.selectedTestId = null;
-    this.testAction = null;
-    this.showNewTestOptions = false;
-    // switch to Tests step so TestManagerComponent mounts
-    this.setStep(5);
-    // set testAction to 'auto' after mount to trigger ngOnChanges
-    setTimeout(() => {
-      this.testAction = 'auto';
-    }, 0);
+    this.openAdaptiveTestCreate();
   }
 
   deleteTest(index: number) {

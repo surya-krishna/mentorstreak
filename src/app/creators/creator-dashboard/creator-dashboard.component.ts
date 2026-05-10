@@ -1,7 +1,10 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { ApiService } from '../../api-service';
+import { AdaptiveApiService } from '../adaptive-api.service';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 @Component({
   selector: 'app-creator-dashboard',
@@ -10,7 +13,7 @@ import { ApiService } from '../../api-service';
   templateUrl: './creator-dashboard.component.html',
   styleUrls: ['./creator-dashboard.component.scss']
 })
-export class CreatorDashboardComponent {
+export class CreatorDashboardComponent implements OnInit {
   courses: any[] = [];
   selectedCourse: any = null;
   loading = false;
@@ -21,7 +24,19 @@ export class CreatorDashboardComponent {
 
   lastFocusedEl: HTMLElement | null = null;
 
-  constructor(private router: Router, private api: ApiService) {
+  // Adaptive analytics widget
+  adaptiveWidgetLoading = false;
+  adaptiveWidget: {
+    totalAttempts: number;
+    totalStudents: number;
+    pendingReview: number;
+    coursesWithData: number;
+    attemptsThisWeek: number;
+  } = { totalAttempts: 0, totalStudents: 0, pendingReview: 0, coursesWithData: 0, attemptsThisWeek: 0 };
+
+  constructor(private router: Router, private api: ApiService, private adaptiveApi: AdaptiveApiService) {}
+
+  ngOnInit() {
     this.loadCourses();
   }
 
@@ -36,7 +51,6 @@ export class CreatorDashboardComponent {
           this.total = res.total || 0;
           this.skip = res.skip || 0;
           this.limit = res.limit || this.limit;
-          // fetch thumbnails for any course that has a thumbnail path
           for (const c of this.courses) { if (c && (c.thumbnail_url || c.thumbnail || c.thumbnailPath)) this.fetchCourseThumbnailPreview(c); }
         } else if (Array.isArray(res)) {
           this.courses = res;
@@ -44,6 +58,7 @@ export class CreatorDashboardComponent {
         } else {
           this.courses = [];
         }
+        this.loadAdaptiveWidget();
       }, error: (err: any) => {
         console.error('Failed to load courses', err);
         this.loading = false;
@@ -90,6 +105,27 @@ export class CreatorDashboardComponent {
 
   get displayEnd() {
     return Math.min(this.skip + this.limit, this.total || this.courses.length);
+  }
+
+  loadAdaptiveWidget() {
+    const courseIds = this.courses.map((c: any) => c.id).filter(Boolean);
+    if (!courseIds.length) return;
+    this.adaptiveWidgetLoading = true;
+    const requests = courseIds.map((id: string) =>
+      this.adaptiveApi.getCourseAnalytics(id).pipe(catchError(() => of(null)))
+    );
+    forkJoin(requests).subscribe((results: any[]) => {
+      this.adaptiveWidgetLoading = false;
+      let totalAttempts = 0, totalStudents = 0, pendingReview = 0, coursesWithData = 0;
+      for (const r of results) {
+        if (!r) continue;
+        totalAttempts += r.total_adaptive_attempts || 0;
+        totalStudents += r.total_students || 0;
+        pendingReview += r.pending_review || 0;
+        if ((r.total_adaptive_attempts || 0) > 0) coursesWithData++;
+      }
+      this.adaptiveWidget = { totalAttempts, totalStudents, pendingReview, coursesWithData, attemptsThisWeek: 0 };
+    });
   }
 
   openMetrics(c: any) { 

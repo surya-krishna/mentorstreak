@@ -1,0 +1,89 @@
+<div class="revision-notes">
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="flex items-center justify-center py-12 text-gray-500">
+    <svg class="animate-spin h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+    </svg>
+    Loading notes…
+  </div>
+
+  <!-- Error -->
+  <div *ngIf="error && !loading" class="text-red-600 text-sm py-4">{{ error }}</div>
+
+  <!-- Empty state -->
+  <div *ngIf="!loading && !error && !legacyHtml && chapters.length === 0" class="text-center py-12 text-gray-500">
+    <p class="mb-4">No revision notes yet. Complete a test to auto-generate notes based on questions you got wrong.</p>
+    <button
+      (click)="regenerate()"
+      [disabled]="regenerating"
+      class="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+    >
+      {{ regenerating ? 'Generating…' : 'Generate Notes Now' }}
+    </button>
+  </div>
+
+  <!-- Notes content -->
+  <ng-container *ngIf="!loading && (legacyHtml || chapters.length > 0)">
+
+    <!-- Header bar -->
+    <div class="flex items-center justify-between mb-4">
+      <div class="text-xs text-gray-500">
+        <span *ngIf="updatedAt">Last updated {{ updatedAt | date:'medium' }}</span>
+        <span *ngIf="questionCount"> · {{ questionCount }} wrong answers covered</span>
+      </div>
+      <button
+        (click)="regenerate()"
+        [disabled]="regenerating"
+        class="text-xs px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 flex items-center gap-1"
+      >
+        <svg *ngIf="!regenerating" xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582M20 20v-5h-.581M5.635 15A8 8 0 1118.364 9" />
+        </svg>
+        <svg *ngIf="regenerating" class="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        {{ regenerating ? 'Regenerating…' : 'Regenerate' }}
+      </button>
+    </div>
+
+    <!-- Legacy flat markdown (old docs) -->
+    <div *ngIf="legacyHtml" class="notes-chapter prose prose-sm max-w-none" [innerHTML]="legacyHtml"></div>
+
+    <!-- Structured chapters -->
+    <div *ngIf="!legacyHtml" class="space-y-3">
+      <div
+        *ngFor="let chapter of chapters"
+        class="border border-gray-200 rounded-xl overflow-hidden"
+      >
+        <!-- Chapter header (toggle) -->
+        <button
+          (click)="toggleChapter(chapter)"
+          class="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 text-left"
+        >
+          <span class="font-medium text-gray-800 text-sm">{{ chapter.name }}</span>
+          <svg
+            [class.rotate-180]="chapter.expanded"
+            class="h-4 w-4 text-gray-500 transition-transform duration-150"
+            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        <!-- Chapter points -->
+        <ul *ngIf="chapter.expanded" class="divide-y divide-gray-100">
+          <li
+            *ngFor="let point of chapter.points"
+            class="notes-chapter px-4 py-3 text-sm text-gray-700 leading-relaxed"
+            [innerHTML]="point"
+          ></li>
+        </ul>
+      </div>
+    </div>
+
+  </ng-container>
+
+</div>

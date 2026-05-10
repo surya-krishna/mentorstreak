@@ -13,6 +13,8 @@ import { SubjectManagerComponent } from './components/subject-manager/subject-ma
 import { ChapterManagerComponent } from './components/chapter-manager/chapter-manager.component';
 import { TestManagerComponent } from './components/test-manager/test-manager.component';
 import { MarkdownEditorComponent } from './components/markdown-editor/markdown-editor.component';
+import { QuestionBankManagerComponent } from './components/question-bank-manager/question-bank-manager.component';
+import { AdaptiveAnalyticsComponent } from './components/adaptive-analytics/adaptive-analytics.component';
 import { COURSE_PUBLISH_TNC } from './terms-and-conditions';
 import { forkJoin } from 'rxjs';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
@@ -28,7 +30,9 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
     ChapterManagerComponent,
     TestManagerComponent,
     PackageManagerComponent,
-    MarkdownEditorComponent
+    MarkdownEditorComponent,
+    QuestionBankManagerComponent,
+    AdaptiveAnalyticsComponent
   ],
   templateUrl: './view-course.component.html',
   styleUrls: ['./view-course.component.scss']
@@ -65,7 +69,7 @@ export class ViewCourseComponent implements OnInit, OnDestroy {
   // Test Manager State
   tests: any[] = [];
   selectedTestId: string | null = null;
-  testAction: 'edit' | 'create' | 'auto' | null = null;
+  testAction: 'edit' | 'create' | 'adaptive' | null = null;
   showNewTestOptions: boolean = false;
 
   // Preview/Chapter Editor State
@@ -226,7 +230,7 @@ export class ViewCourseComponent implements OnInit, OnDestroy {
       if (this.step === 3 && !this.chaptersValidState) return; // block advancing from Chapters
     }
     this.step = n;
-    if (this.step === 5) {
+    if (this.step === 6) {
       this.loadTests();
     }
   }
@@ -387,18 +391,16 @@ export class ViewCourseComponent implements OnInit, OnDestroy {
     this.testAction = 'create';
     this.showNewTestOptions = false;
     // ensure TestManager is visible so it picks up the action
-    this.setStep(5);
+    this.setStep(6);
   }
 
-  openAutoGenerate() {
+  openAdaptiveTestCreate() {
     this.selectedTestId = null;
     this.testAction = null;
     this.showNewTestOptions = false;
-    // switch to Tests step so TestManagerComponent mounts
-    this.setStep(5);
-    // set testAction to 'auto' after mount to trigger ngOnChanges
+    this.setStep(6);
     setTimeout(() => {
-      this.testAction = 'auto';
+      this.testAction = 'adaptive';
     }, 0);
   }
 

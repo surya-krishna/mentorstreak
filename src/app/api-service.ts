@@ -34,6 +34,8 @@ export class ApiService {
     return headers;
   }
 
+  getBaseUrl(): string { return this.baseUrl; }
+
   get<T>(url: string, params?: any, authToken?: string): Observable<T> {
     return this.http.get<T>(this.baseUrl + url, {
       headers: this.getHeaders(authToken),
@@ -57,6 +59,12 @@ export class ApiService {
 
   put<T>(url: string, body: any, authToken?: string): Observable<T> {
     return this.http.put<T>(this.baseUrl + url, body, {
+      headers: this.getHeaders(authToken)
+    }).pipe(catchError((err) => this.handleError(err)));
+  }
+
+  patch<T>(url: string, body: any, authToken?: string): Observable<T> {
+    return this.http.patch<T>(this.baseUrl + url, body, {
       headers: this.getHeaders(authToken)
     }).pipe(catchError((err) => this.handleError(err)));
   }
