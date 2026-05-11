@@ -21,6 +21,10 @@ export class PackageManagerComponent implements OnInit {
   showForm = false;
   showErrors = false;
 
+  editingPackageId: string | null = null;
+  editPackage: any = null;
+  showEditErrors = false;
+
   constructor(
     public api: ApiService,
     private modal: ModalService
@@ -37,15 +41,17 @@ export class PackageManagerComponent implements OnInit {
       discount: 0,
       duration: {
         value: null,
-        unit: 'months', // or 'years'
+        unit: 'months',
       },
       features: {
         content: false,
         videos: false,
         tests: false,
         aiDoubt: false,
-        aiAnalysis: false
-      }
+        aiAnalysis: false,
+        liveMentoring: false
+      },
+      seatsTotal: null
     };
   }
 
@@ -73,7 +79,44 @@ export class PackageManagerComponent implements OnInit {
     return pkg.name && pkg.name.trim().length > 0 &&
       typeof pkg.price === 'number' && pkg.price >= 0 &&
       pkg.discount >= 0 && pkg.discount <= 100 &&
-      (pkg.features.content || pkg.features.videos || pkg.features.tests || pkg.features.aiDoubt || pkg.features.aiAnalysis);
+      (pkg.features.content || pkg.features.videos || pkg.features.tests || pkg.features.aiDoubt || pkg.features.aiAnalysis || pkg.features.liveMentoring);
+  }
+
+  startEdit(pkg: any) {
+    this.editingPackageId = pkg.id;
+    this.editPackage = {
+      name: pkg.name,
+      price: pkg.price,
+      discount: pkg.discount ?? 0,
+      duration: { ...pkg.duration },
+      features: { ...pkg.features },
+      seatsTotal: pkg.seatsTotal ?? null
+    };
+    this.showEditErrors = false;
+  }
+
+  cancelEdit() {
+    this.editingPackageId = null;
+    this.editPackage = null;
+    this.showEditErrors = false;
+  }
+
+  saveEdit() {
+    this.showEditErrors = true;
+    if (!this.isValidPackage(this.editPackage)) return;
+    const payload: any = { ...this.editPackage };
+    if (payload.seatsTotal !== null && payload.seatsTotal !== undefined) {
+      payload.seatsTotal = Number(payload.seatsTotal);
+    }
+    this.api.put(`/creator/v2/packages/${this.editingPackageId}`, payload).subscribe({
+      next: () => {
+        this.fetchPackages();
+        this.cancelEdit();
+      },
+      error: (err: any) => {
+        alert('Failed to update package: ' + (err?.error?.message || err?.message || 'Unknown error'));
+      }
+    });
   }
 
   removePackage(idx: number) {

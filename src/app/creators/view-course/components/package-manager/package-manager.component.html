@@ -21,7 +21,6 @@
       <div class="flex-1">
         <label class="block text-sm font-medium text-gray-700">Duration <span class="text-black-600">( Optional )</span></label>
         <input type="number" min="1" max="120" [(ngModel)]="newPackage.duration.value" class="w-full rounded border px-2 py-1" placeholder="e.g. 6" />
-        
       </div>
       <div>
         <label class="block text-xs font-medium text-gray-700">Unit</label>
@@ -30,7 +29,6 @@
           <option value="years">Years</option>
         </select>
       </div>
-      <div *ngIf="showErrors && (!newPackage.duration.value || newPackage.duration.value <= 0)" class="text-xs text-red-600 ml-2">Duration required</div>
     </div>
     <div class="mb-2">
       <label class="block text-sm font-medium text-gray-700">Overall Price (after discount)</label>
@@ -42,6 +40,11 @@
       <div *ngIf="showErrors && (newPackage.discount < 0 || newPackage.discount > 100)" class="text-xs text-red-600">Discount must be 0-100</div>
     </div>
     <div class="mb-2">
+      <label class="block text-sm font-medium text-gray-700">Limited Seats <span class="text-gray-400 font-normal">(Optional — leave blank for unlimited)</span></label>
+      <input type="number" [(ngModel)]="newPackage.seatsTotal" class="w-full rounded border px-2 py-1" min="1" placeholder="e.g. 50" />
+      <p class="text-xs text-gray-500 mt-1">Set a cap to show "X seats left at this price" to buyers</p>
+    </div>
+    <div class="mb-2">
       <label class="block text-sm font-medium text-gray-700">Features <span class="text-red-600">*</span></label>
       <div class="flex flex-wrap gap-4 mt-1">
         <label class="flex items-center gap-2"><input type="checkbox" [(ngModel)]="newPackage.features.content" /> Content</label>
@@ -49,8 +52,9 @@
         <label class="flex items-center gap-2"><input type="checkbox" [(ngModel)]="newPackage.features.tests" /> Tests</label>
         <label class="flex items-center gap-2"><input type="checkbox" [(ngModel)]="newPackage.features.aiDoubt" /> AI Doubt Support</label>
         <label class="flex items-center gap-2"><input type="checkbox" [(ngModel)]="newPackage.features.aiAnalysis" /> AI Test Analysis</label>
+        <label class="flex items-center gap-2"><input type="checkbox" [(ngModel)]="newPackage.features.liveMentoring" /> Live Mentoring</label>
       </div>
-      <div *ngIf="showErrors && !(newPackage.features.content || newPackage.features.videos || newPackage.features.tests || newPackage.features.aiDoubt || newPackage.features.aiAnalysis)" class="text-xs text-red-600">Select at least one feature</div>
+      <div *ngIf="showErrors && !(newPackage.features.content || newPackage.features.videos || newPackage.features.tests || newPackage.features.aiDoubt || newPackage.features.aiAnalysis || newPackage.features.liveMentoring)" class="text-xs text-red-600">Select at least one feature</div>
     </div>
     <div class="flex gap-2 mt-4">
       <button (click)="addPackage()" class="px-4 py-2 rounded bg-green-600 text-white">Add Package</button>
@@ -59,19 +63,89 @@
   </div>
 
   <div *ngIf="packages.length === 0" class="text-gray-400 italic">No packages created yet.</div>
-  <div *ngFor="let pkg of packages; let i = index" class="border rounded p-3 mb-2 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-    <div>
-      <div class="font-medium text-indigo-700">{{ pkg.name }}</div>
-  <div class="text-xs text-gray-500">Price: ₹{{ pkg.price }} | Discount: {{ pkg.discount }}% | <span class="font-semibold">Final: ₹{{ getDiscountedPrice(pkg) }}</span></div>
-      <div class="text-xs text-gray-500">Duration: {{ pkg.duration.value }} {{ pkg.duration.unit }}</div>
-      <div class="text-xs text-gray-500">Features:
-        <span *ngIf="pkg.features.content">Content, </span>
-        <span *ngIf="pkg.features.videos">Videos, </span>
-        <span *ngIf="pkg.features.tests">Tests, </span>
-        <span *ngIf="pkg.features.aiDoubt">AI Doubt, </span>
-        <span *ngIf="pkg.features.aiAnalysis">AI Analysis</span>
+  <div *ngFor="let pkg of packages; let i = index" class="border rounded p-3 mb-2">
+
+    <!-- Edit form (inline) -->
+    <ng-container *ngIf="editingPackageId === pkg.id; else viewRow">
+      <div class="p-3 bg-yellow-50 border border-yellow-200 rounded">
+        <div class="font-medium text-sm text-yellow-800 mb-3">Editing: {{ pkg.name }}</div>
+        <div class="mb-2">
+          <label class="block text-xs font-medium text-gray-700">Name <span class="text-red-600">*</span></label>
+          <input [(ngModel)]="editPackage.name" class="w-full rounded border px-2 py-1 text-sm" maxlength="50" />
+          <div *ngIf="showEditErrors && (!editPackage.name || !editPackage.name.trim())" class="text-xs text-red-600">Name required</div>
+        </div>
+        <div class="mb-2 flex gap-2">
+          <div class="flex-1">
+            <label class="block text-xs font-medium text-gray-700">Price (INR) <span class="text-red-600">*</span></label>
+            <input type="number" [(ngModel)]="editPackage.price" class="w-full rounded border px-2 py-1 text-sm" min="0" />
+          </div>
+          <div class="flex-1">
+            <label class="block text-xs font-medium text-gray-700">Discount %</label>
+            <input type="number" [(ngModel)]="editPackage.discount" class="w-full rounded border px-2 py-1 text-sm" min="0" max="100" />
+          </div>
+        </div>
+        <div class="mb-2 flex gap-2 items-end">
+          <div class="flex-1">
+            <label class="block text-xs font-medium text-gray-700">Duration</label>
+            <input type="number" [(ngModel)]="editPackage.duration.value" class="w-full rounded border px-2 py-1 text-sm" min="1" />
+          </div>
+          <div>
+            <select [(ngModel)]="editPackage.duration.unit" class="rounded border px-2 py-1 text-sm">
+              <option value="months">Months</option>
+              <option value="years">Years</option>
+            </select>
+          </div>
+        </div>
+        <div class="mb-2">
+          <label class="block text-xs font-medium text-gray-700">Limited Seats <span class="text-gray-400 font-normal">(blank = unlimited)</span></label>
+          <input type="number" [(ngModel)]="editPackage.seatsTotal" class="w-full rounded border px-2 py-1 text-sm" min="1" placeholder="unlimited" />
+        </div>
+        <div class="mb-2">
+          <label class="block text-xs font-medium text-gray-700">Features <span class="text-red-600">*</span></label>
+          <div class="flex flex-wrap gap-3 mt-1 text-sm">
+            <label class="flex items-center gap-1"><input type="checkbox" [(ngModel)]="editPackage.features.content" /> Content</label>
+            <label class="flex items-center gap-1"><input type="checkbox" [(ngModel)]="editPackage.features.videos" /> Videos</label>
+            <label class="flex items-center gap-1"><input type="checkbox" [(ngModel)]="editPackage.features.tests" /> Tests</label>
+            <label class="flex items-center gap-1"><input type="checkbox" [(ngModel)]="editPackage.features.aiDoubt" /> AI Doubt</label>
+            <label class="flex items-center gap-1"><input type="checkbox" [(ngModel)]="editPackage.features.aiAnalysis" /> AI Analysis</label>
+            <label class="flex items-center gap-1"><input type="checkbox" [(ngModel)]="editPackage.features.liveMentoring" /> Live Mentoring</label>
+          </div>
+          <div *ngIf="showEditErrors && !(editPackage.features.content || editPackage.features.videos || editPackage.features.tests || editPackage.features.aiDoubt || editPackage.features.aiAnalysis || editPackage.features.liveMentoring)" class="text-xs text-red-600">Select at least one feature</div>
+        </div>
+        <div class="flex gap-2 mt-3">
+          <button (click)="saveEdit()" class="px-3 py-1 rounded bg-indigo-600 text-white text-sm">Save</button>
+          <button (click)="cancelEdit()" class="px-3 py-1 rounded border text-sm">Cancel</button>
+        </div>
       </div>
-    </div>
-    <button (click)="removePackage(i)" class="text-red-600 hover:underline text-xs">Remove</button>
+    </ng-container>
+
+    <!-- View row -->
+    <ng-template #viewRow>
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+        <div>
+          <div class="font-medium text-indigo-700">{{ pkg.name }}</div>
+          <div class="text-xs text-gray-500">Price: ₹{{ pkg.price }} | Discount: {{ pkg.discount }}% | <span class="font-semibold">Final: ₹{{ getDiscountedPrice(pkg) }}</span></div>
+          <div class="text-xs text-gray-500">Duration: {{ pkg.duration?.value }} {{ pkg.duration?.unit }}</div>
+          <div class="text-xs text-gray-500">Features:
+            <span *ngIf="pkg.features?.content">Content, </span>
+            <span *ngIf="pkg.features?.videos">Videos, </span>
+            <span *ngIf="pkg.features?.tests">Tests, </span>
+            <span *ngIf="pkg.features?.aiDoubt">AI Doubt, </span>
+            <span *ngIf="pkg.features?.aiAnalysis">AI Analysis, </span>
+            <span *ngIf="pkg.features?.liveMentoring">Live Mentoring</span>
+          </div>
+          <div *ngIf="pkg.seatsTotal != null" class="text-xs mt-1">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium">
+              🪑 {{ pkg.seatsRemaining }} / {{ pkg.seatsTotal }} seats remaining
+            </span>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button (click)="startEdit(pkg)" class="text-indigo-600 hover:underline text-xs">Edit</button>
+          <button (click)="removePackage(i)" class="text-red-600 hover:underline text-xs">Remove</button>
+        </div>
+      </div>
+    </ng-template>
+
   </div>
 </div>
