@@ -103,6 +103,19 @@ export interface GenerateRequest {
   type_distribution?: TypeDistribution;
   passage_groups_per_chapter?: number;
   questions_per_passage?: number;
+  // Example-driven generation
+  style_instruction?: string;
+  use_example_library?: boolean;
+  target_count?: number;
+  outputs_per_example?: number;
+  examples_per_batch?: number;
+}
+
+export interface ExampleLibraryItem {
+  _id: string;
+  content_type: string;
+  raw_text: string;
+  created_at: string;
 }
 
 export interface PendingReviewResponse {
@@ -210,6 +223,27 @@ export class AdaptiveApiService {
   // ---------- AI generation + review ----------
   generateQuestions(courseId: string, payload: GenerateRequest) {
     return this.api.post(`${this.qbBase(courseId)}/generate`, payload);
+  }
+
+  // ---------- Example library ----------
+  private exBase(courseId: string) { return `creator/courses/${courseId}/example-library`; }
+
+  addExamples(courseId: string, contentType: string, rawTexts: string[]) {
+    return this.api.post(this.exBase(courseId), { content_type: contentType, raw_texts: rawTexts });
+  }
+
+  listExamples(courseId: string, contentType?: string, page = 1, pageSize = 50): Observable<{ total: number; items: ExampleLibraryItem[] }> {
+    const params: any = { page, page_size: pageSize };
+    if (contentType) params['content_type'] = contentType;
+    return this.api.get(this.exBase(courseId), params);
+  }
+
+  deleteExample(courseId: string, exampleId: string) {
+    return this.api.delete(`${this.exBase(courseId)}/${exampleId}`);
+  }
+
+  clearExampleLibrary(courseId: string) {
+    return this.api.delete(this.exBase(courseId));
   }
 
   getGenerationStatus(courseId: string, jobId: string): Observable<{

@@ -269,12 +269,49 @@
         </label>
       </div>
 
+      <!-- Style instruction -->
+      <label class="block text-xs mb-2">
+        Style instruction <span class="text-gray-400 font-normal">(optional — describe the exam style, e.g. "CAT VARC: original RC passages, inference-heavy, 700 words")</span>
+        <textarea
+          [(ngModel)]="aiRequest.style_instruction"
+          rows="2"
+          placeholder="e.g. CAT VARC style — original argumentative passages, no textbook summaries. Questions must test inference and tone, not surface recall."
+          class="w-full mt-1 rounded border px-2 py-1.5 text-sm font-normal"
+        ></textarea>
+      </label>
+
+      <!-- Example library toggle -->
+      <div *ngIf="exampleLibraryTotal > 0" class="flex items-center gap-2 mb-2 p-2 bg-white border rounded">
+        <input type="checkbox" [(ngModel)]="aiRequest.use_example_library" id="useLibrary" class="rounded" />
+        <label for="useLibrary" class="text-xs cursor-pointer">
+          Use example library style (<strong>{{ exampleLibraryTotal }} {{ exampleContentType }} examples</strong>)
+        </label>
+      </div>
+      <div *ngIf="aiRequest.use_example_library" class="grid grid-cols-3 gap-2 mb-2">
+        <label class="text-xs">
+          Target total
+          <input [(ngModel)]="aiRequest.target_count" type="number" min="1" class="w-full rounded border px-2 py-1.5 text-sm" />
+        </label>
+        <label class="text-xs" title="New outputs generated per batch of examples shown to the AI">
+          Outputs / example batch
+          <input [(ngModel)]="aiRequest.outputs_per_example" type="number" min="1" max="10" class="w-full rounded border px-2 py-1.5 text-sm" />
+        </label>
+        <label class="text-xs" title="How many examples the AI sees per generation call">
+          Examples per call
+          <input [(ngModel)]="aiRequest.examples_per_batch" type="number" min="1" max="6" class="w-full rounded border px-2 py-1.5 text-sm" />
+        </label>
+      </div>
+
       <button
         (click)="generate()"
         [disabled]="generating"
         class="mt-3 bg-purple-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50"
       >
-        {{ generating ? 'Generating…' : 'Generate ' + aiRequest.chapter_ids.length * aiRequest.questions_per_chapter + ' questions' + (aiRequest.passage_groups > 0 ? ' + ' + aiRequest.chapter_ids.length * aiRequest.passage_groups + ' passages' : '') }}
+        <ng-container *ngIf="!generating">
+          <ng-container *ngIf="aiRequest.use_example_library">Generate {{ aiRequest.target_count }} (example-driven)</ng-container>
+          <ng-container *ngIf="!aiRequest.use_example_library">Generate {{ aiRequest.chapter_ids.length * aiRequest.questions_per_chapter }} questions{{ aiRequest.passage_groups > 0 ? ' + ' + aiRequest.chapter_ids.length * aiRequest.passage_groups + ' passages' : '' }}</ng-container>
+        </ng-container>
+        <ng-container *ngIf="generating">Generating…</ng-container>
       </button>
 
       <!-- Progress bar (shown while generation is running) -->
@@ -298,6 +335,52 @@
           <span>⚠</span><span>{{ e }}</span>
         </li>
       </ul>
+    </div>
+
+    <!-- ===== Example Library ===== -->
+    <div class="border rounded bg-white">
+      <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b">
+        <div>
+          <h4 class="font-semibold text-sm">Example Library</h4>
+          <p class="text-xs text-gray-500 mt-0.5">Paste real exam questions/passages — the AI mirrors their style when generating</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <select [(ngModel)]="exampleContentType" (ngModelChange)="onExampleContentTypeChange()" class="rounded border px-2 py-1 text-xs">
+            <option value="passage">Passages</option>
+            <option value="question">Questions</option>
+          </select>
+          <span class="text-xs text-gray-500">{{ exampleLibraryTotal }} saved</span>
+          <button (click)="addingExample = !addingExample" class="text-xs bg-purple-600 text-white rounded px-3 py-1.5">+ Add</button>
+          <button *ngIf="exampleLibraryTotal > 0" (click)="clearExamples()" class="text-xs text-rose-600 border border-rose-200 rounded px-2 py-1.5">Clear all</button>
+        </div>
+      </div>
+
+      <!-- Add example form -->
+      <div *ngIf="addingExample" class="p-4 border-b bg-purple-50 space-y-2">
+        <p class="text-xs text-purple-700">Paste a full {{ exampleContentType }} below. The AI will generate new ones matching this style — topic will come from the chapter content you select.</p>
+        <textarea
+          [(ngModel)]="newExampleText"
+          rows="8"
+          placeholder="Paste a raw {{ exampleContentType }} example here…"
+          class="w-full rounded border px-2 py-1.5 text-sm"
+        ></textarea>
+        <div class="flex justify-end gap-2">
+          <button (click)="addingExample = false; newExampleText = ''" class="text-xs bg-gray-100 rounded px-3 py-1.5">Cancel</button>
+          <button (click)="addExample()" [disabled]="!newExampleText.trim()" class="text-xs bg-purple-600 text-white rounded px-3 py-1.5 disabled:opacity-50">Save example</button>
+        </div>
+      </div>
+
+      <!-- Library list -->
+      <div *ngIf="exampleLibraryLoading" class="py-6 text-center text-xs text-gray-400">Loading…</div>
+      <div *ngIf="!exampleLibraryLoading && !exampleLibrary.length" class="py-6 text-center text-xs text-gray-400">
+        No {{ exampleContentType }} examples yet. Add real exam examples above — the AI will mimic their style.
+      </div>
+      <div *ngIf="!exampleLibraryLoading && exampleLibrary.length" class="divide-y max-h-72 overflow-y-auto">
+        <div *ngFor="let ex of exampleLibrary" class="px-4 py-3 flex gap-3 items-start text-xs">
+          <p class="flex-1 text-gray-700 line-clamp-3 whitespace-pre-wrap">{{ ex.raw_text }}</p>
+          <button (click)="deleteExample(ex._id)" class="text-rose-500 shrink-0 hover:text-rose-700">✕</button>
+        </div>
+      </div>
     </div>
 
     <div *ngIf="pending" class="space-y-2">

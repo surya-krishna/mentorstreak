@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { interval, Subscription } from 'rxjs';
 import { switchMap, takeWhile } from 'rxjs/operators';
-import { AdaptiveApiService, QuestionBankItem, QuestionStats, CsvImportResult, PendingReviewResponse, MockTestPatternSection, MockTestPattern } from '../../../adaptive-api.service';
+import { AdaptiveApiService, QuestionBankItem, QuestionStats, CsvImportResult, PendingReviewResponse, MockTestPatternSection, MockTestPattern, ExampleLibraryItem } from '../../../adaptive-api.service';
 import { ToastService } from '../../../../toast.service';
 import { ModalService } from '../../../../modal.service';
 import { LatexTextComponent } from '../../../../shared/components/latex-text/latex-text.component';
@@ -59,6 +59,12 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
     distribution: { easy: 6, medium: 8, hard: 6 },
     passage_groups: 0,
     questions_per_passage: 4,
+    // Example-driven fields
+    style_instruction: '',
+    use_example_library: false,
+    target_count: 30,
+    outputs_per_example: 3,
+    examples_per_batch: 3,
   };
   generating = false;
   genJobId: string | null = null;
@@ -70,6 +76,14 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
   pending: PendingReviewResponse | null = null;
   passagePopup: { text: string; passageId?: string } | null = null;
   selectedPending: Record<string, boolean> = {};
+
+  // Example library
+  exampleLibrary: ExampleLibraryItem[] = [];
+  exampleLibraryTotal = 0;
+  exampleLibraryLoading = false;
+  exampleContentType: 'passage' | 'question' = 'passage';
+  newExampleText = '';
+  addingExample = false;
 
   // CSV tab
   csvFile: File | null = null;
@@ -155,7 +169,10 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
 
   selectTab(t: TabKey): void {
     this.tab = t;
-    if (t === 'ai' && !this.pending) this.loadPendingReview();
+    if (t === 'ai') {
+      if (!this.pending) this.loadPendingReview();
+      this.loadExampleLibrary();
+    }
     if (t === 'browse' && !this.questions.length) this.loadQuestions();
   }
 
@@ -317,14 +334,22 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
     this.genProgress = 0;
     this.genErrors = [];
     this.genBatches = { completed: 0, total: 0 };
+    const payload: any = {
+      chapter_ids: this.aiRequest.chapter_ids,
+      questions_per_chapter: this.aiRequest.questions_per_chapter,
+      difficulty_distribution: this.aiRequest.distribution,
+      passage_groups_per_chapter: this.aiRequest.passage_groups,
+      questions_per_passage: this.aiRequest.questions_per_passage,
+      style_instruction: this.aiRequest.style_instruction || undefined,
+    };
+    if (this.aiRequest.use_example_library) {
+      payload.use_example_library = true;
+      payload.target_count = this.aiRequest.target_count;
+      payload.outputs_per_example = this.aiRequest.outputs_per_example;
+      payload.examples_per_batch = this.aiRequest.examples_per_batch;
+    }
     this.adaptive
-      .generateQuestions(this.courseId, {
-        chapter_ids: this.aiRequest.chapter_ids,
-        questions_per_chapter: this.aiRequest.questions_per_chapter,
-        difficulty_distribution: this.aiRequest.distribution,
-        passage_groups_per_chapter: this.aiRequest.passage_groups,
-        questions_per_passage: this.aiRequest.questions_per_passage,
-      })
+      .generateQuestions(this.courseId, payload)
       .subscribe({
         next: (res: any) => {
           this.genJobId = res.job_id;
@@ -380,6 +405,58 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
       next: (res) => (this.pending = res),
       error: (err) => this.toast.error('Failed to load pending queue: ' + (err?.message || '')),
     });
+  }
+
+  // ---------- Example library ----------
+  loadExampleLibrary(): void {
+    this.exampleLibraryLoading = true;
+    this.adaptive.listExamples(this.courseId, this.exampleContentType).subscribe({
+      next: (res) => {
+        this.exampleLibrary = res.items;
+        this.exampleLibraryTotal = res.total;
+        this.exampleLibraryLoading = false;
+      },
+      error: () => { this.exampleLibraryLoading = false; },
+    });
+  }
+
+  addExample(): void {
+    const text = this.newExampleText.trim();
+    if (!text) return;
+    this.adaptive.addExamples(this.courseId, this.exampleContentType, [text]).subscribe({
+      next: () => {
+        this.newExampleText = '';
+        this.addingExample = false;
+        this.loadExampleLibrary();
+        this.toast.success('Example added');
+      },
+      error: (err) => this.toast.error('Failed to add example: ' + (err?.message || '')),
+    });
+  }
+
+  deleteExample(id: string): void {
+    this.adaptive.deleteExample(this.courseId, id).subscribe({
+      next: () => {
+        this.loadExampleLibrary();
+        this.toast.success('Example removed');
+      },
+      error: (err) => this.toast.error('Failed to remove: ' + (err?.message || '')),
+    });
+  }
+
+  clearExamples(): void {
+    this.modal.confirm(`Remove all ${this.exampleLibraryTotal} examples from the library?`).then((ok) => {
+      if (!ok) return;
+      this.adaptive.clearExampleLibrary(this.courseId).subscribe({
+        next: () => { this.exampleLibrary = []; this.exampleLibraryTotal = 0; this.toast.success('Library cleared'); },
+        error: (err) => this.toast.error('Failed to clear: ' + (err?.message || '')),
+      });
+    });
+  }
+
+  onExampleContentTypeChange(): void {
+    this.loadExampleLibrary();
+    this.aiRequest.use_example_library = false;
   }
 
   reviewSingle(q: QuestionBankItem, action: 'approve' | 'reject'): void {
