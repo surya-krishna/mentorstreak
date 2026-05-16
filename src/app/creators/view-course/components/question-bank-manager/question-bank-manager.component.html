@@ -363,20 +363,25 @@
         <p class="mt-1">Prepare questions in a spreadsheet and import them all at once. Download the template to see the required columns. Click <strong>Validate</strong> first to check for errors before importing.</p>
       </div>
     </div>
-    <div class="p-3 border rounded bg-amber-50">
+    <div class="p-3 border rounded bg-amber-50 space-y-2">
       <h4 class="font-semibold text-sm">Bulk CSV import</h4>
-      <p class="text-xs text-gray-600 mt-1">
-        Required columns:
-        <span title="Question format: MCQ (multiple choice)">type</span>,
-        <span title="The question text shown to the student">text</span>,
-        <span title="ID of the chapter this question belongs to — find chapter IDs in the Browse tab">chapter_id</span>,
-        <span title="Numeric difficulty 1–5 (1=easiest, 5=hardest) set by the creator">difficulty</span>,
-        <span title="Bloom's Taxonomy level: remember / understand / apply / analyze / evaluate / create">bloom_level</span>,
-        <span title="The exact text of the correct answer option">correctAnswer</span>.
-        Options can be pipe-separated or JSON.
+      <p class="text-xs text-gray-600">
+        Supported types: <strong>MCQ</strong> and <strong>Passage</strong> (passage-based MCQ).
       </p>
-      <div class="mt-2 flex gap-2">
-        <button (click)="downloadCsvTemplate()" class="text-xs border rounded px-3 py-1.5">Download template</button>
+      <p class="text-xs text-gray-600">
+        Required columns:
+        <span class="font-medium" title="MCQ or Passage">type</span>,
+        <span class="font-medium" title="The question text shown to the student">text</span>,
+        <span class="font-medium" title="MongoDB _id of the chapter — find chapter IDs in the Browse tab">chapter_id</span>,
+        <span class="font-medium" title="Numeric difficulty 1–5 (1=easiest, 5=hardest)">difficulty</span>,
+        <span class="font-medium" title="Bloom's Taxonomy level: remember / understand / apply / analyze / evaluate / create">bloom_level</span>.
+      </p>
+      <p class="text-xs text-gray-600">
+        <strong>MCQ:</strong> set <code>options</code> as pipe-separated (<code>A|B|C|D</code>) or JSON array, and <code>correctAnswer</code> to the correct option text.<br/>
+        <strong>Passage:</strong> add <code>passage_text</code> (the reading passage) and set <code>question_sub_type=MCQ</code>. Rows sharing the same passage text are automatically grouped.
+      </p>
+      <div class="mt-1">
+        <button (click)="downloadCsvTemplate()" class="text-xs border rounded px-3 py-1.5">Download template (MCQ + Passage examples)</button>
       </div>
     </div>
 

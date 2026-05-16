@@ -498,8 +498,10 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
     this.adaptive.getCsvTemplate(this.courseId).subscribe({
       next: (tpl) => {
         const headers = [...tpl.required_columns, ...tpl.optional_columns];
-        const example = headers.map((h) => `"${(tpl.example_row[h] || '').toString().replace(/"/g, '""')}"`).join(',');
-        const csv = headers.join(',') + '\n' + example + '\n';
+        const toRow = (ex: Record<string, any>) =>
+          headers.map((h: string) => `"${((ex[h] ?? '').toString().replace(/"/g, '""'))}"`).join(',');
+        const exampleRows = Object.values(tpl.example_rows as Record<string, any>).map(toRow);
+        const csv = headers.join(',') + '\n' + exampleRows.join('\n') + '\n';
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
