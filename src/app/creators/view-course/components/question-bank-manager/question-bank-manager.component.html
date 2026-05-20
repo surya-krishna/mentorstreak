@@ -46,7 +46,7 @@
   <!-- Tabs -->
   <div class="border-b flex gap-4">
     <button
-      *ngFor="let t of [{k:'browse',l:'Browse & Manage'},{k:'ai',l:'AI Generation & Review'},{k:'csv',l:'CSV Import'}]"
+      *ngFor="let t of [{k:'browse',l:'Browse & Manage'},{k:'ai',l:'AI Generation & Review'},{k:'csv',l:'CSV Import'},{k:'raw',l:'Raw Text Import'}]"
       (click)="selectTab($any(t.k))"
       [class.border-indigo-600]="tab === t.k"
       [class.text-indigo-700]="tab === t.k"
@@ -418,8 +418,10 @@
                   {{ o.isCorrect ? '✓ ' : '   ' }}<app-latex-text [text]="o.text" />
                 </li>
               </ul>
-              <div *ngIf="q.explanation" class="text-xs text-gray-500 italic"><app-latex-text [text]="q.explanation" /></div>
-              <button *ngIf="q.passage_text" (click)="showPassage(q)" class="text-xs text-blue-600 underline text-left">View Passage</button>
+              <div *ngIf="q.tf_statement && q.type === 'Paragraph Jumble'" class="text-xs bg-blue-50 border border-blue-200 rounded px-2 py-1"><strong>Sentence:</strong> <app-latex-text [text]="q.tf_statement" /></div>
+              <div *ngIf="q.passage_text && q.type === 'Paragraph Jumble'" class="text-xs bg-gray-50 border rounded px-2 py-1 whitespace-pre-wrap"><strong>Paragraph:</strong> <app-latex-text [text]="q.passage_text" [block]="true" /></div>
+              <div *ngIf="q.explanation" class="text-xs text-gray-500 prose prose-xs max-w-none"><app-latex-text [text]="q.explanation" [block]="true" /></div>
+              <button *ngIf="q.passage_text && q.type !== 'Paragraph Jumble'" (click)="showPassage(q)" class="text-xs text-blue-600 underline text-left">View Passage</button>
               <div class="text-xs text-gray-500">Difficulty {{ q.difficulty }} · {{ q.bloom_level }} · {{ q.topic_tags?.join(', ') }}</div>
             </div>
             <div class="flex flex-col gap-1 min-w-[90px]">
@@ -508,6 +510,138 @@
         </tbody>
       </table>
     </div>
+  </section>
+
+  <!-- ========== RAW TEXT IMPORT ========== -->
+  <section *ngIf="tab === 'raw'" class="space-y-4">
+
+    <!-- Info banner -->
+    <div class="bg-violet-50 border border-violet-200 rounded-lg p-4 flex gap-3">
+      <svg class="w-5 h-5 text-violet-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+      </svg>
+      <div class="text-sm text-violet-800">
+        <p class="font-semibold">Raw Text Import</p>
+        <p class="mt-1">Paste questions in any format — numbered lists, MCQ blocks, passage + comprehension sets. AI will parse them into structured questions, map chapter/difficulty/Bloom level, and add them to the pending review queue below. Approve or reject each one before it enters the active pool.</p>
+      </div>
+    </div>
+
+    <!-- Controls row -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+      <select [(ngModel)]="rawChapterId" class="rounded border px-2 py-1.5 text-sm">
+        <option value="">Auto-detect chapter (AI will tag each question)…</option>
+        <option *ngFor="let c of chapters" [value]="c.id">{{ c.book_name }} · {{ c.name }}</option>
+      </select>
+
+      <div class="flex gap-6 text-sm">
+        <label class="flex gap-2 items-center cursor-pointer">
+          <input type="radio" [(ngModel)]="rawMode" value="exact" name="rawMode" />
+          <span>Exact</span>
+          <span class="text-gray-400 text-xs">(preserve wording)</span>
+        </label>
+        <label class="flex gap-2 items-center cursor-pointer">
+          <input type="radio" [(ngModel)]="rawMode" value="modify" name="rawMode" />
+          <span>Modify</span>
+          <span class="text-gray-400 text-xs">(rephrase to avoid plagiarism)</span>
+        </label>
+      </div>
+
+      <button
+        (click)="parseRawText()"
+        [disabled]="rawParsing || !rawText.trim()"
+        class="bg-violet-600 text-white text-sm rounded px-4 py-1.5 disabled:opacity-50 flex items-center gap-2"
+      >
+        <svg *ngIf="rawParsing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        {{ rawParsing ? 'Parsing…' : 'Parse with AI' }}
+      </button>
+    </div>
+
+    <!-- Textarea -->
+    <textarea
+      [(ngModel)]="rawText"
+      placeholder="Paste your questions here — numbered lists, MCQ blocks, passage + comprehension questions, etc."
+      rows="10"
+      class="w-full border rounded px-3 py-2 text-sm font-mono resize-y"
+    ></textarea>
+
+    <!-- Warnings -->
+    <div *ngIf="rawWarnings.length" class="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1">
+      <p class="text-xs font-semibold text-amber-800">AI-generated content warnings (verify before approving):</p>
+      <ul class="list-disc list-inside text-xs text-amber-700 space-y-0.5">
+        <li *ngFor="let w of rawWarnings">{{ w }}</li>
+      </ul>
+    </div>
+
+    <!-- Success count -->
+    <div *ngIf="rawInsertedCount > 0" class="text-sm text-emerald-700 font-medium">
+      {{ rawInsertedCount }} question{{ rawInsertedCount !== 1 ? 's' : '' }} added — review and approve below.
+    </div>
+
+    <!-- Pending review queue (same as AI tab) -->
+    <div *ngIf="pending" class="space-y-3">
+      <div *ngIf="pending.total_pending === 0" class="text-center py-8">
+        <svg class="w-10 h-10 mx-auto text-green-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <p class="text-sm font-medium text-gray-500">No questions pending review.</p>
+        <p class="text-xs text-gray-400 mt-1">Paste questions above and click "Parse with AI" to get started.</p>
+      </div>
+
+      <div *ngIf="pending.total_pending > 0" class="space-y-3">
+        <div class="flex items-center justify-between">
+          <h4 class="font-medium text-sm">Pending Review ({{ pending.total_pending }})</h4>
+          <div class="flex gap-2" *ngIf="selectedCount > 0">
+            <button (click)="bulkReviewSelected('approve')" class="bg-emerald-600 text-white text-xs rounded px-3 py-1.5">Approve {{ selectedCount }}</button>
+            <button (click)="bulkReviewSelected('reject')" class="bg-rose-600 text-white text-xs rounded px-3 py-1.5">Reject {{ selectedCount }}</button>
+          </div>
+        </div>
+
+        <div *ngFor="let group of pending.chapters" class="border rounded bg-white">
+          <div class="flex items-center justify-between px-3 py-2 bg-gray-50 border-b">
+            <div class="text-sm font-medium">{{ group.chapter_name }} <span class="text-gray-500">({{ group.questions.length }})</span></div>
+            <div class="flex gap-2">
+              <button (click)="bulkReviewChapter(group.chapter_id, 'approve')" class="text-emerald-700 text-xs border border-emerald-300 rounded px-2 py-1">Approve all</button>
+              <button (click)="bulkReviewChapter(group.chapter_id, 'reject')" class="text-rose-700 text-xs border border-rose-300 rounded px-2 py-1">Reject all</button>
+            </div>
+          </div>
+          <div class="divide-y">
+            <div *ngFor="let q of group.questions" class="p-3 flex gap-3">
+              <input type="checkbox" [checked]="selectedPending[qid(q)]" (change)="toggleSelected(q)" class="mt-1" />
+              <div class="flex-1 space-y-1">
+                <div class="text-sm"><app-latex-text [text]="q.text" /></div>
+                <ul class="text-xs text-gray-600 space-y-0.5">
+                  <li *ngFor="let o of q.options" [class.font-semibold]="o.isCorrect" [class.text-emerald-700]="o.isCorrect">
+                    {{ o.isCorrect ? '✓ ' : '   ' }}<app-latex-text [text]="o.text" />
+                  </li>
+                </ul>
+                <div *ngIf="q.tf_statement && q.type === 'Paragraph Jumble'" class="text-xs bg-blue-50 border border-blue-200 rounded px-2 py-1"><strong>Sentence:</strong> <app-latex-text [text]="q.tf_statement" /></div>
+                <div *ngIf="q.passage_text && q.type === 'Paragraph Jumble'" class="text-xs bg-gray-50 border rounded px-2 py-1 whitespace-pre-wrap"><strong>Paragraph:</strong> <app-latex-text [text]="q.passage_text" [block]="true" /></div>
+                <div *ngIf="q.explanation" class="text-xs text-gray-500 prose prose-xs max-w-none"><app-latex-text [text]="q.explanation" [block]="true" /></div>
+                <button *ngIf="q.passage_text && q.type !== 'Paragraph Jumble'" (click)="showPassage(q)" class="text-xs text-blue-600 underline text-left">View Passage</button>
+                <!-- Image upload -->
+                <div class="flex items-center gap-2 mt-1">
+                  <img *ngIf="q.image" [src]="q.image" class="h-16 rounded border object-contain" />
+                  <label class="cursor-pointer text-xs text-gray-500 border rounded px-2 py-1 hover:bg-gray-50">
+                    {{ q.image ? 'Change image' : '+ Add image' }}
+                    <input type="file" accept="image/*" class="hidden" (change)="uploadRawQuestionImage(q, $event)" />
+                  </label>
+                </div>
+                <div class="text-xs text-gray-500">Difficulty {{ q.difficulty }} · {{ q.bloom_level }} · {{ q.topic_tags?.join(', ') }}</div>
+              </div>
+              <div class="flex flex-col gap-1 min-w-[90px]">
+                <button (click)="reviewSingle(q, 'approve')" class="bg-emerald-600 text-white text-xs rounded px-2 py-1" title="Approve: adds this question to the active pool">Approve</button>
+                <button (click)="reviewSingle(q, 'reject')" class="bg-rose-600 text-white text-xs rounded px-2 py-1" title="Reject: removes from active pool">Reject</button>
+                <button (click)="startEdit(q)" class="text-indigo-600 text-xs">Edit</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </section>
 
   <!-- ========== CONFIG (removed — config is now inline in each adaptive test in Test Manager) ========== -->

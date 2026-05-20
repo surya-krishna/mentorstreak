@@ -8,7 +8,7 @@ import { ToastService } from '../../../../toast.service';
 import { ModalService } from '../../../../modal.service';
 import { LatexTextComponent } from '../../../../shared/components/latex-text/latex-text.component';
 
-type TabKey = 'browse' | 'ai' | 'csv' | 'config';
+type TabKey = 'browse' | 'ai' | 'csv' | 'raw' | 'config';
 
 interface ChapterOption {
   id: string;
@@ -84,6 +84,14 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
   exampleContentType: 'passage' | 'question' = 'passage';
   newExampleText = '';
   addingExample = false;
+
+  // Raw text import tab
+  rawText = '';
+  rawChapterId = '';
+  rawMode: 'exact' | 'modify' = 'exact';
+  rawParsing = false;
+  rawWarnings: string[] = [];
+  rawInsertedCount = 0;
 
   // CSV tab
   csvFile: File | null = null;
@@ -172,6 +180,9 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
     if (t === 'ai') {
       if (!this.pending) this.loadPendingReview();
       this.loadExampleLibrary();
+    }
+    if (t === 'raw') {
+      this.loadPendingReview();
     }
     if (t === 'browse' && !this.questions.length) this.loadQuestions();
   }
@@ -528,6 +539,51 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
         },
         error: (err) => this.toast.error('Bulk action failed: ' + (err?.message || '')),
       });
+    });
+  }
+
+  // ---------- Raw text import ----------
+  parseRawText(): void {
+    if (!this.rawText.trim()) {
+      this.toast.error('Paste some question text first');
+      return;
+    }
+    this.rawParsing = true;
+    this.rawWarnings = [];
+    this.rawInsertedCount = 0;
+    this.adaptive.parseRawText(this.courseId, {
+      raw_text: this.rawText,
+      chapter_id: this.rawChapterId || undefined,
+      mode: this.rawMode,
+    }).subscribe({
+      next: (res) => {
+        this.rawParsing = false;
+        this.rawInsertedCount = res.inserted_count;
+        this.rawWarnings = res.warnings || [];
+        this.toast.success(`Parsed ${res.inserted_count} question${res.inserted_count !== 1 ? 's' : ''} — review below`);
+        this.loadPendingReview();
+        this.loadStats();
+      },
+      error: (err) => {
+        this.rawParsing = false;
+        this.toast.error('Parsing failed: ' + (err?.error?.detail || err?.message || 'Unknown error'));
+      },
+    });
+  }
+
+  uploadRawQuestionImage(q: QuestionBankItem, event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    this.adaptive.uploadQuestionImage(this.courseId, file).subscribe({
+      next: (res) => {
+        q.image = res.path;
+        const id = this.qid(q);
+        if (id) {
+          this.adaptive.updateQuestion(this.courseId, id, { image: res.path }).subscribe({ error: () => {} });
+        }
+        this.toast.success('Image uploaded');
+      },
+      error: () => this.toast.error('Image upload failed'),
     });
   }
 
