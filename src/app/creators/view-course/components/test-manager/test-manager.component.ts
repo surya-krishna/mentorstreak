@@ -52,6 +52,7 @@ export class TestManagerComponent implements OnInit, OnChanges {
     testTypes = ['CHAPTER', 'OVERALL'];
     questionTypes = ['MCQ', 'MSQ', 'True/False', 'Descriptive', 'Fill-in-the-Blanks', 'Matching', 'Sequence', 'Passage'];
     scoringFormulas = ['Raw Score', 'Percentile (JEE/NEET)', 'Scaled Score (CAT)', 'Custom'];
+    examNames = ['CAT'];
     difficultyOptions:number[] = [];
     previewImageUrl: string | null = null;
     allChapters: any[] = [];
@@ -140,10 +141,16 @@ export class TestManagerComponent implements OnInit, OnChanges {
             unattemptedMarks: 0,
             status: 'draft',
             is_adaptive: true,
+            adaptive_mode: 'chapter',
             total_duration_min: 30,
             can_navigate_between_sections: true,
             adaptive_sections: [{ name: 'Section 1', chapter_ids: [] as string[], question_count: 20, marks_pos: 1, marks_neg: 0, time_limit_min: 0 }],
+            exam_name: '',
         };
+    }
+
+    get isAdaptiveMock(): boolean {
+        return !!(this.currentTest?.is_adaptive && this.currentTest?.adaptive_mode === 'mock');
     }
 
     initNewTest() {
@@ -183,6 +190,13 @@ export class TestManagerComponent implements OnInit, OnChanges {
 
                 // Adaptive test: load sections config
                 if (this.currentTest.is_adaptive) {
+                    // Restore adaptive_mode from stored value or infer from type
+                    if (!this.currentTest.adaptive_mode) {
+                        this.currentTest.adaptive_mode =
+                            this.currentTest.type === 'ADAPTIVE_MOCK' ? 'mock' : 'chapter';
+                    }
+                    if (!this.currentTest.exam_name) this.currentTest.exam_name = '';
+
                     // Populate adaptive_sections from stored adaptive_sections or mock_pattern.sections
                     if (!this.currentTest.adaptive_sections || !this.currentTest.adaptive_sections.length) {
                         const pattern = this.currentTest.mock_pattern;
@@ -273,13 +287,21 @@ export class TestManagerComponent implements OnInit, OnChanges {
             delete payload.chapterId;
             delete payload.selectedChapters;
             delete payload.hasNegativeMarking;
-            payload.sections = t.adaptive_sections || [];
             payload.total_duration_min = t.total_duration_min || 30;
             payload.can_navigate_between_sections = t.can_navigate_between_sections ?? true;
             payload.hasNegativeMarking = t.hasNegativeMarking || false;
             payload.scoringFormula = t.scoringFormula || 'standard';
             payload.unattemptedMarks = t.unattemptedMarks || 0;
             if (t.difficulty_targets) payload.difficulty_targets = t.difficulty_targets;
+
+            if (t.adaptive_mode === 'mock' && t.exam_name && t.exam_name !== 'other') {
+                // System exam config: send exam_name, no sections needed
+                payload.exam_name = t.exam_name;
+                payload.sections = [];
+            } else {
+                // Custom pattern (chapter mode or "Other"): send sections, no exam_name
+                payload.sections = t.adaptive_sections || [];
+            }
         }
         return payload;
     }
@@ -1019,6 +1041,10 @@ export class TestManagerComponent implements OnInit, OnChanges {
         if (!t.title || !String(t.title).trim().length) return false;
         // Adaptive test: uses total_duration_min instead of duration
         if (t.is_adaptive) {
+            if (t.adaptive_mode === 'mock' && t.exam_name && t.exam_name !== 'other') {
+                // System exam config drives everything — only title required
+                return true;
+            }
             if (!(Number(t.total_duration_min) > 0)) return false;
             const sections: any[] = t.adaptive_sections || [];
             return sections.length > 0 && sections.some((s: any) => s.chapter_ids && s.chapter_ids.length > 0);
