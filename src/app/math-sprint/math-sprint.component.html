@@ -1,0 +1,204 @@
+<div class="min-h-screen bg-[#0a0a12] text-white flex flex-col items-center px-4 py-10">
+
+  <!-- ===== CONFIG SCREEN ===== -->
+  @if (phase === 'config') {
+  <div class="w-full max-w-lg animate-fade">
+
+    <!-- Header -->
+    <div class="text-center mb-10">
+      <h1 class="text-5xl font-extrabold mb-2"
+          style="background: linear-gradient(135deg, #5f6fff, #00d4ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+        Math Sprint
+      </h1>
+      <p class="text-slate-400 text-lg">Race the clock. Build exam speed.</p>
+    </div>
+
+    <!-- Card -->
+    <div class="rounded-2xl p-8 space-y-8" style="background: #181a2a;">
+
+      <!-- Duration -->
+      <div>
+        <label class="block text-sm font-semibold text-slate-300 mb-3 uppercase tracking-widest">Duration</label>
+        <div class="flex flex-wrap gap-3">
+          @for (d of durationOptions; track d) {
+            <button (click)="selectDuration(d)"
+                    [class]="(!useCustomDuration && config.duration === d) ? 'dur-pill active rounded-xl px-5 py-2 font-bold text-sm transition-all' : 'dur-pill inactive rounded-xl px-5 py-2 font-bold text-sm transition-all'">
+              {{ d }}s
+            </button>
+          }
+          <div class="flex items-center gap-2">
+            <button (click)="enableCustomDuration()"
+                    [class]="useCustomDuration ? 'dur-pill active rounded-xl px-4 py-2 font-bold text-sm transition-all' : 'dur-pill inactive rounded-xl px-4 py-2 font-bold text-sm transition-all'">
+              Custom
+            </button>
+            @if (useCustomDuration) {
+              <input type="number"
+                     [(ngModel)]="customDuration"
+                     (ngModelChange)="onCustomDurationChange()"
+                     min="10" max="600"
+                     class="w-20 text-center rounded-xl px-2 py-2 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-[#5f6fff]"
+                     style="background: #23244a; border: 1px solid #5f6fff;" />
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Operations -->
+      <div>
+        <label class="block text-sm font-semibold text-slate-300 mb-3 uppercase tracking-widest">Operations</label>
+        <div class="flex gap-3">
+          @for (op of operationOptions; track op.value) {
+            <button (click)="toggleOperation(op.value)"
+                    [class]="isOperationSelected(op.value) ? 'op-pill active rounded-xl px-5 py-3 font-extrabold text-xl transition-all' : 'op-pill inactive rounded-xl px-5 py-3 font-extrabold text-xl transition-all'">
+              {{ op.label }}
+            </button>
+          }
+        </div>
+        <p class="text-xs text-slate-500 mt-2">Select at least one operation.</p>
+      </div>
+
+      <!-- Difficulty -->
+      <div>
+        <label class="block text-sm font-semibold text-slate-300 mb-3 uppercase tracking-widest">Difficulty</label>
+        <div class="flex gap-3">
+          @for (d of difficultyOptions; track d) {
+            <button (click)="setDifficulty(d)"
+                    [class]="diffBtnClass(d) + ' rounded-xl px-5 py-2 font-bold text-sm capitalize transition-all'">
+              {{ d }}
+            </button>
+          }
+        </div>
+        <p class="text-xs text-slate-500 mt-2">
+          <span class="text-green-400">Easy</span>: small numbers &nbsp;·&nbsp;
+          <span class="text-[#5f6fff]">Medium</span>: 2-digit &nbsp;·&nbsp;
+          <span class="text-red-400">Hard</span>: large numbers
+        </p>
+      </div>
+
+      <!-- Start -->
+      <button (click)="startGame()"
+              [disabled]="!canStart"
+              class="w-full py-4 rounded-xl font-bold text-lg transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+              style="background: linear-gradient(135deg, #5f6fff, #00d4ff);"
+              [style.box-shadow]="canStart ? '0 0 24px rgba(95,111,255,0.5)' : 'none'">
+        Start Sprint →
+      </button>
+    </div>
+  </div>
+  }
+
+
+  <!-- ===== PLAYING SCREEN ===== -->
+  @if (phase === 'playing') {
+  <div class="w-full max-w-xl animate-fade">
+
+    <!-- Timer Progress Bar -->
+    <div class="w-full h-1.5 rounded-full mb-6" style="background: #181a2a;">
+      <div class="h-1.5 rounded-full progress-bar"
+           [style.width.%]="timerPercent"
+           [style.background-color]="timerColor">
+      </div>
+    </div>
+
+    <!-- Top Row: Timer + Score -->
+    <div class="flex justify-between items-center mb-8">
+      <div class="text-4xl font-mono font-extrabold" [style.color]="timerColor">
+        {{ timerDisplay }}
+      </div>
+      <div class="text-right">
+        <div class="text-xs text-slate-400 uppercase tracking-widest">Score</div>
+        <div class="text-4xl font-extrabold" style="color: #00ff99;">{{ score }}</div>
+      </div>
+    </div>
+
+    <!-- Problem -->
+    <div class="text-center mb-8">
+      <div class="text-6xl font-extrabold tracking-tight leading-tight"
+           style="font-variant-numeric: tabular-nums;">
+        {{ currentProblem.display }}
+      </div>
+    </div>
+
+    <!-- Answer Form -->
+    <form (ngSubmit)="onSubmit()" autocomplete="off" class="flex flex-col items-center gap-4">
+      <input #answerInput
+             type="text"
+             inputmode="numeric"
+             pattern="-?[0-9]*"
+             [(ngModel)]="userInput"
+             name="answer"
+             placeholder="Answer"
+             class="answer-input w-full max-w-xs text-center text-4xl font-bold rounded-2xl px-6 py-4 outline-none transition-all duration-200"
+             style="background: #181a2a; border: 2px solid #23244a; color: #fff;"
+             [style.border-color]="lastAnswerCorrect === true ? '#00ff99' : lastAnswerCorrect === false ? '#ef4444' : '#23244a'"
+             [style.box-shadow]="lastAnswerCorrect === true ? '0 0 16px rgba(0,255,153,0.4)' : lastAnswerCorrect === false ? '0 0 16px rgba(239,68,68,0.4)' : 'none'" />
+
+      <!-- Feedback -->
+      <div class="h-6 text-lg font-bold transition-opacity duration-200"
+           [style.opacity]="lastAnswerCorrect !== null ? '1' : '0'">
+        @if (lastAnswerCorrect === true)  { <span class="feedback-correct">✓ Correct!</span> }
+        @if (lastAnswerCorrect === false) { <span class="feedback-wrong">✗ Wrong</span> }
+      </div>
+
+      <p class="text-slate-500 text-sm">Press <kbd class="px-2 py-0.5 rounded text-xs font-mono" style="background: #23244a; border: 1px solid #5f6fff;">Enter</kbd> to submit</p>
+    </form>
+
+    <!-- Stop button -->
+    <div class="mt-10 text-center">
+      <button (click)="endGame()"
+              class="text-xs text-slate-500 hover:text-red-400 transition-colors underline">
+        End game
+      </button>
+    </div>
+  </div>
+  }
+
+
+  <!-- ===== RESULTS SCREEN ===== -->
+  @if (phase === 'results') {
+  <div class="w-full max-w-lg animate-fade">
+
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <div class="text-xl text-slate-400 mb-1">Time's Up!</div>
+      <div class="text-8xl font-extrabold" style="color: #00ff99;">{{ result.correct }}</div>
+      <div class="text-slate-400 text-lg mt-1">correct answers</div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="grid grid-cols-2 gap-4 mb-8">
+      <div class="stat-card">
+        <div class="text-3xl font-extrabold text-white">{{ result.correct }}</div>
+        <div class="text-xs text-slate-400 uppercase tracking-widest mt-1">Correct</div>
+      </div>
+      <div class="stat-card">
+        <div class="text-3xl font-extrabold" style="color: #ef4444;">{{ result.incorrect }}</div>
+        <div class="text-xs text-slate-400 uppercase tracking-widest mt-1">Incorrect</div>
+      </div>
+      <div class="stat-card">
+        <div class="text-3xl font-extrabold" style="color: #00d4ff;">{{ result.problemsPerMinute }}</div>
+        <div class="text-xs text-slate-400 uppercase tracking-widest mt-1">Per Minute</div>
+      </div>
+      <div class="stat-card">
+        <div class="text-3xl font-extrabold" style="color: #f59e0b;">{{ accuracyPercent }}%</div>
+        <div class="text-xs text-slate-400 uppercase tracking-widest mt-1">Accuracy</div>
+      </div>
+    </div>
+
+    <!-- Total answered -->
+    <p class="text-center text-slate-400 text-sm mb-8">
+      {{ result.totalAnswered }} problems attempted in {{ result.duration }}s
+    </p>
+
+    <!-- Actions -->
+    <div class="flex gap-4">
+      <button (click)="restartGame()"
+              class="flex-1 py-4 rounded-xl font-bold text-lg transition-all duration-200"
+              style="background: linear-gradient(135deg, #5f6fff, #00d4ff); box-shadow: 0 0 24px rgba(95,111,255,0.4);">
+        Play Again
+      </button>
+    </div>
+  </div>
+  }
+
+</div>

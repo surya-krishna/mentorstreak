@@ -6,6 +6,35 @@ import { marked } from 'marked';
 const MATH_RE = /\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\$([^\$\n]+?)\$|\\\(([\s\S]+?)\\\)/g;
 const SPACING_SPEC_RE = /\\\[\s*-?\d+(?:\.\d+)?\s*(?:mm|cm|em|ex|pt|pc|in|bp|dd|cc|sp)\s*\]/g;
 
+// Detects a bare LaTeX command keyword anywhere in the string
+const BARE_LATEX_CMD_RE = /\\(?:sqrt|frac|times|div|cdot|pm|mp|leq|geq|neq|approx|infty|alpha|beta|gamma|delta|theta|lambda|mu|pi|sigma|omega|sum|prod|int|lim|log|ln|sin|cos|tan|vec|hat|bar|overline|underline|left|right)\b/;
+
+/**
+ * If the entire string is a math expression not wrapped in $...$ (e.g. an option text
+ * like "20(\sqrt{2}+7)" or "\frac{1}{2}(PQ+SR)"), wrap the whole thing in $...$
+ * so renderLatex can render it with KaTeX.
+ * Only wraps when the string is NOT already delimited and contains a bare LaTeX command.
+ */
+function autoWrapBareMath(text: string): string {
+  if (!text || !text.includes('\\')) return text;
+  // Split on existing delimiters; only process un-delimited segments
+  const parts = text.split(/(\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\$[^\$\n]+?\$|\\\([\s\S]+?\\\))/g);
+  return parts.map((part, i) => {
+    // Odd indices are already-delimited math — leave them alone
+    if (i % 2 === 1) return part;
+    if (!part.includes('\\')) return part;
+    // If this plain-text segment contains a bare LaTeX command, wrap each line that has one
+    return part.split('\n').map(line => {
+      if (BARE_LATEX_CMD_RE.test(line) && !line.startsWith('$')) {
+        // Wrap only the contiguous math token(s) — if the whole line looks like
+        // a math expression (no sentence-ending punctuation mid-line), wrap all
+        return `$${line.trim()}$`;
+      }
+      return line;
+    }).join('\n');
+  }).join('');
+}
+
 /**
  * Render a string that may contain LaTeX math ($...$, $$...$$) and markdown.
  *
@@ -16,6 +45,7 @@ const SPACING_SPEC_RE = /\\\[\s*-?\d+(?:\.\d+)?\s*(?:mm|cm|em|ex|pt|pc|in|bp|dd|
  */
 export function renderLatex(text: string): string {
   if (!text) return '';
+  text = autoWrapBareMath(text);
   text = text.replace(SPACING_SPEC_RE, '\\\\');
   try {
     const parts: string[] = [];
@@ -67,6 +97,7 @@ export function renderLatex(text: string): string {
  */
 export function renderLatexBlock(text: string): string {
   if (!text) return '';
+  text = autoWrapBareMath(text);
   text = text.replace(SPACING_SPEC_RE, '\\\\');
   try {
     // Replace each math segment with a placeholder, render the markdown,

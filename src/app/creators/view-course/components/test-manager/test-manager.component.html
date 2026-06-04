@@ -60,19 +60,21 @@
             </div>
         </div>
 
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Scoring Formula</label>
-            <select [(ngModel)]="currentTest.scoringFormula"
-                class="w-full rounded-md border border-gray-200 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                <option *ngFor="let formula of scoringFormulas" [value]="formula">{{ formula }}</option>
-            </select>
-        </div>
+        <ng-container *ngIf="!(currentTest.is_adaptive && currentTest.adaptive_mode === 'mock' && currentTest.exam_name && currentTest.exam_name !== 'other')">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Scoring Formula</label>
+                <select [(ngModel)]="currentTest.scoringFormula"
+                    class="w-full rounded-md border border-gray-200 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <option *ngFor="let formula of scoringFormulas" [value]="formula">{{ formula }}</option>
+                </select>
+            </div>
 
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Unattempted Marks</label>
-            <input type="number" [(ngModel)]="currentTest.unattemptedMarks"
-                class="w-full rounded-md border border-gray-200 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
-        </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Unattempted Marks</label>
+                <input type="number" [(ngModel)]="currentTest.unattemptedMarks"
+                    class="w-full rounded-md border border-gray-200 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+            </div>
+        </ng-container>
 
         <div *ngIf="currentTest.type === 'OVERALL'" class="col-span-2">
             <label class="block text-sm font-medium text-gray-700 mb-1">Select Subjects (applies to whole test) <span
@@ -85,15 +87,26 @@
                 class="text-xs text-red-600 mt-1">Select at least one subject for OVERALL tests</div>
         </div>
 
-        <div class="col-span-2 flex items-center gap-2 mt-2">
+        <div *ngIf="!(currentTest.is_adaptive && currentTest.adaptive_mode === 'mock' && currentTest.exam_name && currentTest.exam_name !== 'other')"
+            class="col-span-2 flex items-center gap-2 mt-2">
             <input type="checkbox" id="negMarking" [(ngModel)]="currentTest.hasNegativeMarking"
                 class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4">
             <label for="negMarking" class="text-sm font-medium text-gray-700 select-none cursor-pointer">Enable
                 Negative Marking for this test</label>
         </div>
 
-        <!-- Adaptive-only global fields -->
-        <ng-container *ngIf="currentTest.is_adaptive">
+        <!-- Section navigation lock — available for both manual and adaptive tests -->
+        <div *ngIf="!currentTest.is_adaptive" class="col-span-2 flex items-center gap-2 mt-2">
+            <input type="checkbox" id="canNavigateManual" [(ngModel)]="currentTest.canNavigateBetweenSections"
+                class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+            <label for="canNavigateManual" class="text-sm font-medium text-gray-700 select-none cursor-pointer">
+                Allow navigation between sections
+                <span class="text-xs text-gray-500 font-normal ml-1">(uncheck to lock sections — students cannot return to completed sections)</span>
+            </label>
+        </div>
+
+        <!-- Adaptive-only global fields — hidden when a system exam config is selected (config provides timing/marking) -->
+        <ng-container *ngIf="currentTest.is_adaptive && !(currentTest.adaptive_mode === 'mock' && currentTest.exam_name && currentTest.exam_name !== 'other')">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Total Duration (minutes) <span class="text-red-600">*</span></label>
                 <input type="number" [(ngModel)]="currentTest.total_duration_min" min="5" max="600"
@@ -108,13 +121,46 @@
         </ng-container>
     </div>
 
-    <!-- Adaptive info banner -->
-    <div *ngIf="currentTest.is_adaptive" class="rounded-lg border border-dashed border-indigo-300 bg-indigo-50 p-4 text-indigo-700 text-sm">
+    <!-- Adaptive mode selector (chapter vs mock/overall) -->
+    <div *ngIf="currentTest.is_adaptive" class="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border">
+        <span class="text-sm font-medium text-gray-700">Adaptive Test Scope:</span>
+        <label class="flex items-center gap-2 cursor-pointer text-sm">
+            <input type="radio" [(ngModel)]="currentTest.adaptive_mode" value="chapter"
+                class="text-indigo-600 h-4 w-4">
+            <span>Chapter Test</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer text-sm">
+            <input type="radio" [(ngModel)]="currentTest.adaptive_mode" value="mock"
+                class="text-indigo-600 h-4 w-4">
+            <span>Mock / Overall Test</span>
+        </label>
+    </div>
+
+    <!-- Exam config picker (shown when mock mode selected) -->
+    <div *ngIf="currentTest.is_adaptive && currentTest.adaptive_mode === 'mock'" class="p-4 bg-indigo-50 rounded-lg border border-indigo-200 space-y-3">
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Exam Pattern <span class="text-red-600">*</span></label>
+            <select [(ngModel)]="currentTest.exam_name"
+                class="w-full rounded-md border border-gray-200 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white">
+                <option value="">— Select exam —</option>
+                <option *ngFor="let en of examNames" [value]="en">{{ en }}</option>
+                <option value="other">Other (Custom Pattern)</option>
+            </select>
+            <div *ngIf="showManualErrors && !currentTest.exam_name" class="text-xs text-red-600 mt-1">Select an exam pattern</div>
+        </div>
+        <!-- System exam selected — show confirmation banner -->
+        <p *ngIf="currentTest.exam_name && currentTest.exam_name !== 'other'" class="text-xs text-indigo-700 bg-indigo-100 rounded px-3 py-2">
+            Using <strong>{{ currentTest.exam_name }}</strong> exam config. Sections, question counts, timing, and marking scheme are all configured automatically — no manual setup needed.
+        </p>
+    </div>
+
+    <!-- Adaptive info banner (chapter mode or custom pattern) -->
+    <div *ngIf="currentTest.is_adaptive && (currentTest.adaptive_mode !== 'mock' || currentTest.exam_name === 'other')" class="rounded-lg border border-dashed border-indigo-300 bg-indigo-50 p-4 text-indigo-700 text-sm">
         Questions are selected automatically per student from the question bank based on their ability level. Configure sections below — each section covers specific chapters.
     </div>
 
-    <!-- Adaptive Sections (always shown for adaptive tests, replaces manual questions) -->
-    <div *ngIf="currentTest.is_adaptive" class="space-y-4">
+    <!-- Adaptive Sections (chapter mode or custom mock pattern) -->
+    <div *ngIf="currentTest.is_adaptive && (currentTest.adaptive_mode !== 'mock' || currentTest.exam_name === 'other')" class="space-y-4">
         <div *ngFor="let sec of currentTest.adaptive_sections; let si = index" class="border rounded-lg overflow-hidden">
             <!-- Section header — mirrors manual test header style -->
             <div class="bg-gray-100 p-3 flex items-center justify-between border-b">
@@ -360,22 +406,64 @@
                     </div>
 
                     <!-- Empty State -->
-                    <div *ngIf="getPassagesInSection(si).length === 0" 
+                    <div *ngIf="getPassagesInSection(si).length === 0"
                         class="text-center text-xs text-gray-500 py-2">
                         No passages added yet
                     </div>
                 </div>
 
+                <!-- Subsections (optional directions at subsection boundaries) -->
+                <details class="border border-gray-200 rounded-md">
+                    <summary class="flex items-center justify-between px-3 py-2 text-sm font-medium text-gray-700 cursor-pointer select-none hover:bg-gray-50 rounded-md">
+                        <span>Subsections
+                            <span *ngIf="section.subsections?.length" class="ml-1 text-xs text-indigo-600 font-normal">
+                                ({{section.subsections.length}})
+                            </span>
+                        </span>
+                        <span class="text-xs text-gray-400">Optional — add for RC/VA-style direction breaks within a section</span>
+                    </summary>
+                    <div class="px-3 pb-3 space-y-3 pt-2">
+                        <div *ngFor="let sub of section.subsections; let subi = index"
+                            class="p-3 bg-gray-50 rounded border border-gray-200 space-y-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-gray-400 font-medium uppercase w-6">{{subi+1}}.</span>
+                                <input [(ngModel)]="sub.name" placeholder="Subsection name (e.g. Reading Comprehension)"
+                                    class="flex-1 rounded border border-gray-200 px-2 py-1 text-sm focus:ring-2 focus:ring-indigo-500">
+                                <button (click)="removeSubsection(si, subi)"
+                                    class="text-gray-400 hover:text-red-500 text-lg px-1">×</button>
+                            </div>
+                            <textarea [(ngModel)]="sub.directions" rows="2"
+                                placeholder="Directions shown to student at the start of this subsection..."
+                                class="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:border-indigo-500"></textarea>
+                        </div>
+                        <button (click)="addSubsection(si)"
+                            class="text-xs text-indigo-600 font-medium hover:text-indigo-800">+ Add Subsection</button>
+                    </div>
+                </details>
+
                 <!-- Section Marking Settings -->
-                <div class="flex flex-wrap items-center gap-6 p-3 bg-indigo-50 rounded-md border border-indigo-100">
-                    <div class="flex items-center gap-2">
-                        <input type="checkbox" [id]="'uniform-'+si" [(ngModel)]="section.useUniformMarking"
-                            (change)="onUniformMarkingToggle(si)"
-                            class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4">
-                        <label [for]="'uniform-'+si"
-                            class="text-sm font-medium text-gray-700 cursor-pointer select-none">
-                            Same marking scheme for all questions
-                        </label>
+                <div class="p-3 bg-indigo-50 rounded-md border border-indigo-100 space-y-3">
+                    <div class="flex flex-wrap items-center gap-6">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" [id]="'uniform-'+si" [(ngModel)]="section.useUniformMarking"
+                                (change)="onUniformMarkingToggle(si)"
+                                class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+                            <label [for]="'uniform-'+si"
+                                class="text-sm font-medium text-gray-700 cursor-pointer select-none">
+                                Same marks for all questions
+                            </label>
+                        </div>
+
+                        <div *ngIf="currentTest.hasNegativeMarking" class="flex items-center gap-2">
+                            <input type="checkbox" [id]="'pertype-'+si" [(ngModel)]="section.usePerTypeMarking"
+                                (change)="onPerTypeMarkingToggle(si)"
+                                class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+                            <label [for]="'pertype-'+si"
+                                class="text-sm font-medium text-gray-700 cursor-pointer select-none">
+                                Per question-type negative marking
+                                <span class="text-xs text-gray-500 font-normal">(e.g. MCQ: -1, FITB: 0)</span>
+                            </label>
+                        </div>
                     </div>
 
                     <div *ngIf="section.useUniformMarking" class="flex items-center gap-4 animate-fadeIn">
@@ -393,6 +481,21 @@
                                 (change)="onUniformMarksChange(si)"
                                 class="w-20 rounded border border-gray-300 px-2 py-1 text-sm text-red-700 font-medium"
                                 placeholder="-0.25">
+                        </div>
+                    </div>
+
+                    <!-- Per-type negative marking table -->
+                    <div *ngIf="currentTest.hasNegativeMarking && section.usePerTypeMarking" class="animate-fadeIn">
+                        <p class="text-xs text-gray-500 mb-2">Set negative marks (deduction) per question type for this section:</p>
+                        <div class="flex flex-wrap gap-3">
+                            <div *ngFor="let qtype of getSectionQuestionTypes(si)" class="flex items-center gap-2 bg-white rounded border px-2 py-1">
+                                <label class="text-xs font-medium text-gray-700 w-28">{{qtype}}</label>
+                                <span class="text-xs text-gray-400">−</span>
+                                <input type="number" min="0" step="0.25"
+                                    [(ngModel)]="section.marksNegByType[qtype]"
+                                    class="w-16 rounded border border-gray-300 px-2 py-1 text-sm text-red-700 font-medium"
+                                    placeholder="0">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -600,6 +703,29 @@
                                             <input [(ngModel)]="q.correctAnswer" placeholder="Exact match answer" maxlength="200"
                                                 class="flex-1 rounded border border-gray-200 px-2 py-1 text-sm focus:border-indigo-500">
                                         </div>
+                                        <div class="flex flex-wrap items-center gap-4 mt-2 p-2 bg-amber-50 rounded border border-amber-100">
+                                            <div class="flex items-center gap-2">
+                                                <label class="text-xs font-medium text-gray-600 uppercase">Input Mode</label>
+                                                <label class="flex items-center gap-1 text-xs cursor-pointer">
+                                                    <input type="radio" [(ngModel)]="q.inputMode" value="text"
+                                                        (change)="q.keyboardDisabled = false"
+                                                        class="text-indigo-600 h-3 w-3">
+                                                    Text
+                                                </label>
+                                                <label class="flex items-center gap-1 text-xs cursor-pointer">
+                                                    <input type="radio" [(ngModel)]="q.inputMode" value="numeric"
+                                                        class="text-indigo-600 h-3 w-3">
+                                                    Numeric keypad
+                                                </label>
+                                            </div>
+                                            <div *ngIf="q.inputMode === 'numeric'" class="flex items-center gap-2">
+                                                <input type="checkbox" [id]="'kbdDisabled-'+si+'-'+qi" [(ngModel)]="q.keyboardDisabled"
+                                                    class="rounded text-amber-600 focus:ring-amber-500 h-3 w-3">
+                                                <label [for]="'kbdDisabled-'+si+'-'+qi" class="text-xs text-gray-700 cursor-pointer select-none">
+                                                    Disable physical keyboard (exam mode)
+                                                </label>
+                                            </div>
+                                        </div>
                                     </ng-container>
 
                                     <!-- Descriptive -->
@@ -651,6 +777,17 @@
                                     </ng-container>
 
                                 </div>
+
+                                <!-- Subsection assignment (only shown if section has subsections) -->
+                                <div *ngIf="section.subsections?.length" class="flex items-center gap-2 mt-2">
+                                    <label class="text-xs text-gray-500 whitespace-nowrap">Subsection:</label>
+                                    <select [(ngModel)]="q.subsectionId"
+                                        class="rounded border border-gray-200 px-2 py-1 text-xs focus:ring-2 focus:ring-indigo-500">
+                                        <option [ngValue]="null">— None —</option>
+                                        <option *ngFor="let sub of section.subsections" [value]="sub.id">{{sub.name || '(unnamed)'}}</option>
+                                    </select>
+                                </div>
+
                                 <!-- Explanation field for each question -->
                                 <div class="mt-2">
                                     <label class="text-xs text-gray-600">Explanation (steps to derive answer)</label>

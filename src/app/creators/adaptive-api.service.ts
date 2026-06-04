@@ -19,7 +19,7 @@ export interface QuestionBankItem {
   correctAnswer?: string | null;
   explanation?: string | null;
   image?: string | null;
-  source?: 'manual' | 'ai_generated' | 'csv';
+  source?: 'manual' | 'ai_generated' | 'csv' | 'raw_text';
   reviewed?: boolean;
   active?: boolean;
   times_served?: number;
@@ -29,6 +29,8 @@ export interface QuestionBankItem {
   passage_id?: string | null;
   passage_text?: string | null;
   question_sub_type?: string | null;
+  tf_statement?: string | null;
+  blanks?: string[];
 }
 
 export interface QuestionListResponse {
@@ -103,6 +105,19 @@ export interface GenerateRequest {
   type_distribution?: TypeDistribution;
   passage_groups_per_chapter?: number;
   questions_per_passage?: number;
+  // Example-driven generation
+  style_instruction?: string;
+  use_example_library?: boolean;
+  target_count?: number;
+  outputs_per_example?: number;
+  examples_per_batch?: number;
+}
+
+export interface ExampleLibraryItem {
+  _id: string;
+  content_type: string;
+  raw_text: string;
+  created_at: string;
 }
 
 export interface PendingReviewResponse {
@@ -212,6 +227,27 @@ export class AdaptiveApiService {
     return this.api.post(`${this.qbBase(courseId)}/generate`, payload);
   }
 
+  // ---------- Example library ----------
+  private exBase(courseId: string) { return `creator/courses/${courseId}/example-library`; }
+
+  addExamples(courseId: string, contentType: string, rawTexts: string[]) {
+    return this.api.post(this.exBase(courseId), { content_type: contentType, raw_texts: rawTexts });
+  }
+
+  listExamples(courseId: string, contentType?: string, page = 1, pageSize = 50): Observable<{ total: number; items: ExampleLibraryItem[] }> {
+    const params: any = { page, page_size: pageSize };
+    if (contentType) params['content_type'] = contentType;
+    return this.api.get(this.exBase(courseId), params);
+  }
+
+  deleteExample(courseId: string, exampleId: string) {
+    return this.api.delete(`${this.exBase(courseId)}/${exampleId}`);
+  }
+
+  clearExampleLibrary(courseId: string) {
+    return this.api.delete(this.exBase(courseId));
+  }
+
   getGenerationStatus(courseId: string, jobId: string): Observable<{
     job_id: string;
     status: 'running' | 'completed' | 'failed';
@@ -253,6 +289,22 @@ export class AdaptiveApiService {
     const params: any = { limit };
     if (chapterId) params.chapter_id = chapterId;
     return this.api.get<PendingReviewResponse>(`${this.qbBase(courseId)}/pending-review`, params);
+  }
+
+  // ---------- Raw text import ----------
+  parseRawText(courseId: string, payload: { raw_text: string; chapter_id?: string; mode: 'exact' | 'modify' }): Observable<{
+    inserted_count: number;
+    question_ids: string[];
+    passage_ids: string[];
+    warnings: string[];
+  }> {
+    return this.api.post(`${this.qbBase(courseId)}/parse-raw-text`, payload);
+  }
+
+  uploadQuestionImage(courseId: string, file: File): Observable<{ path: string }> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.api.postMultipart<{ path: string }>(`/creator/v2/courses/${courseId}/upload-image`, form);
   }
 
   // ---------- CSV ----------

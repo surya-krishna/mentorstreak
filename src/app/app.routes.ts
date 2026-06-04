@@ -13,6 +13,7 @@ import { CreatorSignupComponent } from './creators/creator-signup/creator-signup
 import { CreatorDashboardComponent } from './creators/creator-dashboard/creator-dashboard.component';
 import { NewCourseComponent } from './creators/new-course/new-course.component';
 import { ViewCourseComponent } from './creators/view-course/view-course.component';
+import { MathSprintComponent } from './math-sprint/math-sprint.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -34,4 +35,5 @@ export const routes: Routes = [
   { path: 'creator/dashboard', component: CreatorDashboardComponent },
   { path: 'creator/courses/new', component: NewCourseComponent },
   { path: 'creator/courses/:id', component: ViewCourseComponent },
+  { path: 'math', component: MathSprintComponent },
 ];
