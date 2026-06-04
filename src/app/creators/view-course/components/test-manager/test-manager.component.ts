@@ -162,13 +162,17 @@ export class TestManagerComponent implements OnInit, OnChanges {
             hasNegativeMarking: false,
             scoringFormula: 'Raw Score',
             unattemptedMarks: 0,
+            canNavigateBetweenSections: true,
             sections: [{
                 name: 'Section 1',
                 questions: [],
                 passages: [],
+                subsections: [],
                 useUniformMarking: false,
                 uniformMarksPos: 1,
                 uniformMarksNeg: 0,
+                usePerTypemarking: false,
+                marksNegByType: {},
                 timeLimit: 0,
                 selectedChapters: []
             }],
@@ -186,6 +190,7 @@ export class TestManagerComponent implements OnInit, OnChanges {
                 // Ensure defaults
                 if (!this.currentTest.scoringFormula) this.currentTest.scoringFormula = 'Raw Score';
                 if (this.currentTest.unattemptedMarks === undefined) this.currentTest.unattemptedMarks = 0;
+                if (this.currentTest.canNavigateBetweenSections === undefined) this.currentTest.canNavigateBetweenSections = true;
                 if (!this.currentTest.sections) this.currentTest.sections = [];
 
                 // Adaptive test: load sections config
@@ -234,11 +239,15 @@ export class TestManagerComponent implements OnInit, OnChanges {
                     if (!s.selectedChapters) s.selectedChapters = [];
                     if (!s.questions) s.questions = [];
                     if (!s.passages) s.passages = [];
-                    // Ensure each question has chapterId field
+                    if (!s.subsections) s.subsections = [];
+                    if (s.usePerTypeMarking === undefined) s.usePerTypeMarking = false;
+                    if (!s.marksNegByType) s.marksNegByType = {};
+                    // Ensure each question has required fields
                     s.questions.forEach((q: any) => {
-                        if (q.chapterId === undefined) {
-                            q.chapterId = null;
-                        }
+                        if (q.chapterId === undefined) q.chapterId = null;
+                        if (q.inputMode === undefined) q.inputMode = 'text';
+                        if (q.keyboardDisabled === undefined) q.keyboardDisabled = false;
+                        if (q.subsectionId === undefined) q.subsectionId = null;
                     });
                 });
 
@@ -274,6 +283,7 @@ export class TestManagerComponent implements OnInit, OnChanges {
             hasNegativeMarking: t.hasNegativeMarking || false,
             scoringFormula: t.scoringFormula || 'Raw Score',
             unattemptedMarks: t.unattemptedMarks || 0,
+            canNavigateBetweenSections: t.canNavigateBetweenSections ?? true,
             sections: t.sections || [],
             status: t.status || 'draft',
             chapterId: t.chapterId || null,
@@ -361,9 +371,12 @@ export class TestManagerComponent implements OnInit, OnChanges {
             name: `Section ${this.currentTest.sections.length + 1}`,
             questions: [],
             passages: [],
+            subsections: [],
             useUniformMarking: false,
             uniformMarksPos: 1,
             uniformMarksNeg: 0,
+            usePerTypeMarking: false,
+            marksNegByType: {},
             timeLimit: 0,
             selectedChapters: []
         });
@@ -416,7 +429,10 @@ export class TestManagerComponent implements OnInit, OnChanges {
             image: null,
             chapterId: defaultChapterId,
             passageId: null,
-            questionSubType: null
+            questionSubType: null,
+            inputMode: 'text',
+            keyboardDisabled: false,
+            subsectionId: null
         };
         section.questions.push(question);
     }
@@ -447,11 +463,40 @@ export class TestManagerComponent implements OnInit, OnChanges {
         const section = this.currentTest.sections[sectionIndex];
 
         if (section.useUniformMarking) {
+            section.usePerTypeMarking = false;
             section.questions.forEach((q: any) => {
                 q.marksPos = section.uniformMarksPos;
                 q.marksNeg = section.uniformMarksNeg;
             });
         }
+    }
+
+    onPerTypeMarkingToggle(sectionIndex: number) {
+        if (!this.currentTest) return;
+        const section = this.currentTest.sections[sectionIndex];
+        if (section.usePerTypeMarking) {
+            section.useUniformMarking = false;
+            // Seed marksNegByType with 0 for each type present in section
+            const types = this.getSectionQuestionTypes(sectionIndex);
+            types.forEach((t: string) => {
+                if (section.marksNegByType[t] === undefined) section.marksNegByType[t] = 0;
+            });
+        } else {
+            section.marksNegByType = {};
+        }
+    }
+
+    getSectionQuestionTypes(sectionIndex: number): string[] {
+        if (!this.currentTest) return [];
+        const section = this.currentTest.sections[sectionIndex];
+        const types = new Set<string>();
+        (section.questions || []).forEach((q: any) => {
+            const t = q.type === 'Passage' ? (q.questionSubType || 'MCQ') : q.type;
+            if (t && t !== 'SubsectionDirections') types.add(t);
+        });
+        // Always include the standard exam types so creator can configure before adding questions
+        ['MCQ', 'MSQ', 'Fill-in-the-Blanks'].forEach(t => types.add(t));
+        return Array.from(types);
     }
 
     onUniformMarksChange(sectionIndex: number) {
@@ -501,6 +546,30 @@ export class TestManagerComponent implements OnInit, OnChanges {
         this.modal.confirm('Are you sure you want to delete this sequence item?').then(confirmed => {
             if (confirmed) {
                 question.sequenceItems.splice(index, 1);
+            }
+        });
+    }
+
+    // Subsection management
+    addSubsection(sectionIndex: number) {
+        if (!this.currentTest) return;
+        const section = this.currentTest.sections[sectionIndex];
+        if (!section.subsections) section.subsections = [];
+        const slug = `sub_${Date.now()}`;
+        section.subsections.push({ id: slug, name: '', directions: '' });
+    }
+
+    removeSubsection(sectionIndex: number, subIndex: number) {
+        if (!this.currentTest) return;
+        const section = this.currentTest.sections[sectionIndex];
+        this.modal.confirm('Delete this subsection? Questions assigned to it will become unassigned.').then(confirmed => {
+            if (confirmed) {
+                const removedId = section.subsections[subIndex].id;
+                section.subsections.splice(subIndex, 1);
+                // Clear subsectionId on any questions that referenced it
+                section.questions.forEach((q: any) => {
+                    if (q.subsectionId === removedId) q.subsectionId = null;
+                });
             }
         });
     }
