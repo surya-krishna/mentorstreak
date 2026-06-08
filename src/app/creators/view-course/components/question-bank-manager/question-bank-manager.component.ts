@@ -75,6 +75,7 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
   private pollSub?: Subscription;
   pending: PendingReviewResponse | null = null;
   passagePopup: { text: string; passageId?: string } | null = null;
+  passageImageZoom: string | null = null;
   selectedPending: Record<string, boolean> = {};
 
   // Example library
@@ -255,10 +256,46 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
     this.passagePopup = null;
   }
 
+  openImageZoom(url: string): void { this.passageImageZoom = url; }
+  closeImageZoom(): void { this.passageImageZoom = null; }
+
+  onEditChapterChange(chapterId: string): void {
+    if (!this.editingQuestion) return;
+    const chapter = this.chapters.find((c) => c.id === chapterId);
+    if (chapter) this.editingQuestion.book_id = chapter.book_id;
+  }
+
+  onTopicTagsChange(value: string): void {
+    if (this.editingQuestion) {
+      this.editingQuestion.topic_tags = value.split(',').map(t => t.trim()).filter(Boolean);
+    }
+  }
+
+  markCorrect(index: number): void {
+    if (!this.editingQuestion?.options) return;
+    this.editingQuestion.options.forEach((o, i) => (o.isCorrect = i === index));
+    this.editingQuestion.correctAnswer = this.editingQuestion.options[index]?.text ?? '';
+  }
+
+  uploadEditQuestionImage(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file || !this.editingQuestion) return;
+    this.adaptive.uploadQuestionImage(this.courseId, file).subscribe({
+      next: (res) => {
+        this.editingQuestion!.image = res.path;
+        this.toast.success('Image uploaded');
+      },
+      error: () => this.toast.error('Image upload failed'),
+    });
+  }
+
   saveEdit(): void {
     if (!this.editingQuestion) return;
     const id = this.qid(this.editingQuestion);
     if (!id) return;
+    // Sync correctAnswer from whichever option is marked isCorrect
+    const correct = this.editingQuestion.options?.find((o) => o.isCorrect);
+    if (correct) this.editingQuestion.correctAnswer = correct.text;
     const { _id, id: _id2, ...patch } = this.editingQuestion as any;
     this.adaptive.updateQuestion(this.courseId, id, patch).subscribe({
       next: () => {
@@ -274,6 +311,7 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
         this.toast.success('Question updated');
         this.editingQuestion = null;
         this.loadQuestions();
+        if (this.pending) this.loadPendingReview();
       },
       error: (err) => this.toast.error('Update failed: ' + (err?.message || '')),
     });
@@ -468,6 +506,24 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
   onExampleContentTypeChange(): void {
     this.loadExampleLibrary();
     this.aiRequest.use_example_library = false;
+  }
+
+  addToExamples(q: QuestionBankItem): void {
+    const text = q.text?.trim();
+    if (!text) return;
+    this.exampleContentType = 'question';
+    this.newExampleText = text;
+    this.addingExample = true;
+  }
+
+  generateFromExamples(): void {
+    if (!this.aiRequest.chapter_ids.length) {
+      this.toast.error('Select at least one chapter in the generation settings above');
+      return;
+    }
+    this.exampleContentType = 'question';
+    this.aiRequest.use_example_library = true;
+    this.generate();
   }
 
   reviewSingle(q: QuestionBankItem, action: 'approve' | 'reject'): void {

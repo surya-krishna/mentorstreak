@@ -28,6 +28,7 @@ export interface QuestionBankItem {
   p_value?: number | null;
   passage_id?: string | null;
   passage_text?: string | null;
+  passage_images?: string[] | null;
   question_sub_type?: string | null;
   tf_statement?: string | null;
   blanks?: string[];
