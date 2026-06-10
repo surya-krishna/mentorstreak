@@ -34,6 +34,19 @@ export interface QuestionBankItem {
   blanks?: string[];
 }
 
+export interface PassageBankItem {
+  _id?: string;
+  id?: string;
+  course_id?: string;
+  chapter_id?: string;
+  text: string;
+  title?: string | null;
+  source?: string | null;
+  difficulty?: number;
+  images?: string[];
+  active?: boolean;
+}
+
 export interface QuestionListResponse {
   total: number;
   page: number;
@@ -283,7 +296,17 @@ export class AdaptiveApiService {
   }
 
   updatePassage(courseId: string, passageId: string, payload: { text: string; chapter_id: string; difficulty: number; title?: string }) {
-    return this.api.put(`/courses/${courseId}/passages/${passageId}`, payload);
+    return this.api.put(`/api/v2/courses/${courseId}/passages/${passageId}`, payload);
+  }
+
+  listPassages(courseId: string, chapterId?: string, page = 1, pageSize = 50): Observable<{ total: number; page: number; items: PassageBankItem[] }> {
+    const params: any = { page, page_size: pageSize };
+    if (chapterId) params.chapter_id = chapterId;
+    return this.api.get(`/api/v2/courses/${courseId}/passages`, params);
+  }
+
+  createPassage(courseId: string, payload: { text: string; chapter_id: string; difficulty?: number; title?: string }) {
+    return this.api.post<{ id: string; message: string }>(`/api/v2/courses/${courseId}/passages`, payload);
   }
 
   listPendingReview(courseId: string, chapterId?: string, limit = 100): Observable<PendingReviewResponse> {
