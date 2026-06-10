@@ -57,6 +57,8 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
   passageSearch = '';
   showPassageOptions = false;
   selectedPassage: PassageBankItem | null = null;
+  newPassageImages: string[] = [];
+  uploadingPassageImage = false;
   addingQuestion = false;
   newQuestion: QuestionBankItem = this.blankQuestion();
 
@@ -261,6 +263,7 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
     this.passageSearch = '';
     this.showPassageOptions = false;
     this.passageOptions = [];
+    this.newPassageImages = [];
   }
 
   cancelEdit(): void {
@@ -270,6 +273,51 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
     this.passageSearch = '';
     this.showPassageOptions = false;
     this.passageOptions = [];
+    this.newPassageImages = [];
+  }
+
+  // ---------- Passage images ----------
+  uploadLinkedPassageImage(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file || !this.editingQuestion) return;
+    this.uploadingPassageImage = true;
+    this.adaptive.uploadQuestionImage(this.courseId, file).subscribe({
+      next: (res) => {
+        this.editingQuestion!.passage_images = [...(this.editingQuestion!.passage_images || []), res.path];
+        this.uploadingPassageImage = false;
+        this.toast.success('Image uploaded');
+      },
+      error: () => {
+        this.uploadingPassageImage = false;
+        this.toast.error('Image upload failed');
+      },
+    });
+  }
+
+  removeLinkedPassageImage(index: number): void {
+    if (!this.editingQuestion?.passage_images) return;
+    this.editingQuestion.passage_images = this.editingQuestion.passage_images.filter((_, i) => i !== index);
+  }
+
+  uploadNewPassageImage(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    this.uploadingPassageImage = true;
+    this.adaptive.uploadQuestionImage(this.courseId, file).subscribe({
+      next: (res) => {
+        this.newPassageImages = [...this.newPassageImages, res.path];
+        this.uploadingPassageImage = false;
+        this.toast.success('Image uploaded');
+      },
+      error: () => {
+        this.uploadingPassageImage = false;
+        this.toast.error('Image upload failed');
+      },
+    });
+  }
+
+  removeNewPassageImage(index: number): void {
+    this.newPassageImages = this.newPassageImages.filter((_, i) => i !== index);
   }
 
   // ---------- Link passage (edit modal) ----------
@@ -326,6 +374,7 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
       text,
       chapter_id: this.editingQuestion!.chapter_id!,
       difficulty: this.editingQuestion!.difficulty ?? 3,
+      images: this.newPassageImages,
     }).pipe(map((res) => res.id));
   }
 
@@ -407,6 +456,7 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
                 text: eq.passage_text,
                 chapter_id: eq.chapter_id,
                 difficulty: eq.difficulty ?? 3,
+                images: eq.passage_images || [],
               }).subscribe({ error: () => {} }); // best-effort; question already saved
             }
             this.toast.success('Question updated');

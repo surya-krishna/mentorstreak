@@ -730,9 +730,21 @@
       </div>
 
       <!-- Passage text (already linked to a passage_bank entry) -->
-      <div *ngIf="editingQuestion.passage_id">
+      <div *ngIf="editingQuestion.passage_id" class="space-y-2">
         <label class="text-xs font-medium text-gray-700 block mb-1">Passage text</label>
         <textarea [(ngModel)]="editingQuestion.passage_text" class="w-full rounded border px-3 py-2 text-sm" rows="6" placeholder="Passage shown to students above this question"></textarea>
+
+        <label class="text-xs font-medium text-gray-700 block mb-1">Passage images</label>
+        <div class="flex flex-wrap gap-2">
+          <div *ngFor="let img of editingQuestion.passage_images; let i = index" class="relative">
+            <img [src]="getImageUrl(img)" class="h-20 rounded border object-contain" />
+            <button (click)="removeLinkedPassageImage(i)" class="absolute -top-1.5 -right-1.5 bg-rose-600 text-white rounded-full w-5 h-5 text-xs leading-none">×</button>
+          </div>
+          <label class="cursor-pointer text-xs text-gray-500 border rounded px-3 py-1.5 hover:bg-gray-50 self-start">
+            {{ uploadingPassageImage ? 'Uploading…' : '+ Add image' }}
+            <input type="file" accept="image/*" class="hidden" [disabled]="uploadingPassageImage" (change)="uploadLinkedPassageImage($event)" />
+          </label>
+        </div>
       </div>
 
       <!-- Link passage (for questions not yet linked to a passage) -->
@@ -764,6 +776,20 @@
           </div>
           <p *ngIf="selectedPassage" class="text-xs text-emerald-700">Linked to existing passage.</p>
           <p *ngIf="!selectedPassage && passageSearch.trim()" class="text-xs text-amber-700">A new passage will be created with this text and linked.</p>
+
+          <div *ngIf="!selectedPassage" class="space-y-1">
+            <label class="text-xs font-medium text-gray-700 block">Passage images <span class="font-normal text-gray-400">(for the new passage)</span></label>
+            <div class="flex flex-wrap gap-2">
+              <div *ngFor="let img of newPassageImages; let i = index" class="relative">
+                <img [src]="getImageUrl(img)" class="h-20 rounded border object-contain" />
+                <button (click)="removeNewPassageImage(i)" class="absolute -top-1.5 -right-1.5 bg-rose-600 text-white rounded-full w-5 h-5 text-xs leading-none">×</button>
+              </div>
+              <label class="cursor-pointer text-xs text-gray-500 border rounded px-3 py-1.5 hover:bg-gray-50 self-start">
+                {{ uploadingPassageImage ? 'Uploading…' : '+ Add image' }}
+                <input type="file" accept="image/*" class="hidden" [disabled]="uploadingPassageImage" (change)="uploadNewPassageImage($event)" />
+              </label>
+            </div>
+          </div>
         </div>
       </div>
 

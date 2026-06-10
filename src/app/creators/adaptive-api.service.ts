@@ -295,7 +295,7 @@ export class AdaptiveApiService {
     return this.api.post(`${this.qbBase(courseId)}/${questionId}/regenerate`, {});
   }
 
-  updatePassage(courseId: string, passageId: string, payload: { text: string; chapter_id: string; difficulty: number; title?: string }) {
+  updatePassage(courseId: string, passageId: string, payload: { text: string; chapter_id: string; difficulty: number; title?: string; images?: string[] }) {
     return this.api.put(`/api/v2/courses/${courseId}/passages/${passageId}`, payload);
   }
 
@@ -305,7 +305,7 @@ export class AdaptiveApiService {
     return this.api.get(`/api/v2/courses/${courseId}/passages`, params);
   }
 
-  createPassage(courseId: string, payload: { text: string; chapter_id: string; difficulty?: number; title?: string }) {
+  createPassage(courseId: string, payload: { text: string; chapter_id: string; difficulty?: number; title?: string; images?: string[] }) {
     return this.api.post<{ id: string; message: string }>(`/api/v2/courses/${courseId}/passages`, payload);
   }
 
