@@ -309,6 +309,10 @@ export class AdaptiveApiService {
     return this.api.post<{ id: string; message: string }>(`/api/v2/courses/${courseId}/passages`, payload);
   }
 
+  deletePassage(courseId: string, passageId: string, unlinkQuestions = false): Observable<{ message: string; unlinked_questions: number }> {
+    return this.api.delete(`/api/v2/courses/${courseId}/passages/${passageId}`, { unlink_questions: unlinkQuestions });
+  }
+
   listPendingReview(courseId: string, chapterId?: string, limit = 100): Observable<PendingReviewResponse> {
     const params: any = { limit };
     if (chapterId) params.chapter_id = chapterId;

@@ -731,7 +731,13 @@
 
       <!-- Passage text (already linked to a passage_bank entry) -->
       <div *ngIf="editingQuestion.passage_id" class="space-y-2">
-        <label class="text-xs font-medium text-gray-700 block mb-1">Passage text</label>
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-medium text-gray-700 block mb-1">Passage text</label>
+          <div class="flex items-center gap-3">
+            <button (click)="unlinkPassageFromQuestion()" class="text-xs text-amber-600 hover:text-amber-800" title="Remove the passage link from this question only">Unlink passage</button>
+            <button (click)="deletePassageAndUnlinkAll()" class="text-xs text-rose-600 hover:text-rose-800" title="Delete the passage and unlink every question that uses it">Delete passage &amp; unlink all questions</button>
+          </div>
+        </div>
         <textarea [(ngModel)]="editingQuestion.passage_text" class="w-full rounded border px-3 py-2 text-sm" rows="6" placeholder="Passage shown to students above this question"></textarea>
 
         <label class="text-xs font-medium text-gray-700 block mb-1">Passage images</label>

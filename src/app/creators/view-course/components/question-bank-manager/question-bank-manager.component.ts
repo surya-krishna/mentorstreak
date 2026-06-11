@@ -378,6 +378,39 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
     }).pipe(map((res) => res.id));
   }
 
+  // Unlink the passage from the question being edited (persisted on save)
+  unlinkPassageFromQuestion(): void {
+    if (!this.editingQuestion?.passage_id) return;
+    this.editingQuestion.passage_id = null;
+    this.editingQuestion.passage_text = null;
+    this.editingQuestion.passage_images = [];
+    this.linkPassage = false;
+    this.toast.success('Passage unlinked — click Save to apply');
+  }
+
+  // Delete the passage from the bank and unlink it from every question that references it
+  deletePassageAndUnlinkAll(): void {
+    const passageId = this.editingQuestion?.passage_id;
+    if (!passageId) return;
+    this.modal.confirm('Delete this passage and unlink ALL questions that use it? The questions themselves are kept.').then((ok) => {
+      if (!ok) return;
+      this.adaptive.deletePassage(this.courseId, passageId, true).subscribe({
+        next: (res) => {
+          this.toast.success(`Passage deleted; ${res.unlinked_questions} question${res.unlinked_questions !== 1 ? 's' : ''} unlinked`);
+          if (this.editingQuestion) {
+            this.editingQuestion.passage_id = null;
+            this.editingQuestion.passage_text = null;
+            this.editingQuestion.passage_images = [];
+          }
+          this.linkPassage = false;
+          this.loadQuestions();
+          if (this.pending) this.loadPendingReview();
+        },
+        error: (err) => this.toast.error('Failed to delete passage: ' + (err?.message || '')),
+      });
+    });
+  }
+
   showPassage(q: QuestionBankItem): void {
     if (!q.passage_text) return;
     this.passagePopup = { text: q.passage_text, passageId: q.passage_id ?? undefined };
