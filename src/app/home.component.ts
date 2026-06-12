@@ -41,9 +41,6 @@ import { CommonModule } from '@angular/common';
     }
     .content-overlay > * {
       pointer-events: auto;
-      background: rgba(24,26,42,0.15);
-      border-radius: 1rem;
-      box-shadow: 0 4px 32px 0 rgba(31, 38, 135, 0.17);
     }
     h1 {
       color: var(--white);
@@ -109,6 +106,51 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
   showAppPopup = false;
   showIos = true;
 
+  testimonials = [
+    {
+      name: 'Ananya Iyer',
+      initials: 'AI',
+      tag: 'CAT 2025 Aspirant · Chennai',
+      avatarBg: 'linear-gradient(135deg, #F2C98A, #E3A857)',
+      quote: 'I work full-time, so coaching batches were never an option. The sectional mocks plus the AI mentor at night is basically how my entire DILR prep happened.'
+    },
+    {
+      name: 'Rohan Deshmukh',
+      initials: 'RD',
+      tag: 'Engineering Final Year · Pune',
+      avatarBg: 'linear-gradient(135deg, #8B96FF, #6C7BFF)',
+      quote: 'The mock analysis is brutally honest — it showed me I was losing 12 minutes on the first two QA questions every single time. Fixed that, and my sectional score jumped.'
+    },
+    {
+      name: 'Sneha Agarwal',
+      initials: 'SA',
+      tag: 'Second Attempt · Kolkata',
+      avatarBg: 'linear-gradient(135deg, #E3A857, #B97F2E)',
+      quote: 'Last year I revised formulas from a notebook and forgot half of them by November. The spaced-repetition flashcards are the single biggest upgrade in my second attempt.'
+    },
+    {
+      name: 'Mohammed Faisal',
+      initials: 'MF',
+      tag: 'Working Professional · Hyderabad',
+      avatarBg: 'linear-gradient(135deg, #F2C98A, #6C7BFF)',
+      quote: 'Asked the AI mentor to explain a parajumble at 1 AM and got a clearer breakdown than my old coaching class ever gave. That alone is worth it for VARC.'
+    },
+    {
+      name: 'Kavya Nair',
+      initials: 'KN',
+      tag: 'B.Com Graduate · Kochi',
+      avatarBg: 'linear-gradient(135deg, #6C7BFF, #B97F2E)',
+      quote: 'Coming from a non-engineering background, QA scared me. The mindmaps showing how arithmetic topics connect made the syllabus feel finite for the first time.'
+    },
+    {
+      name: 'Arjun Malhotra',
+      initials: 'AM',
+      tag: 'CAT 2026 Aspirant · Delhi',
+      avatarBg: 'linear-gradient(135deg, #E3A857, #8B96FF)',
+      quote: 'The streak system sounds gimmicky until you realise you have not missed a study day in seven weeks. Consistency was always my problem — not anymore.'
+    }
+  ];
+
   ngAfterViewInit() {
     this.initThreeJS();
     this.animate();
@@ -128,8 +170,8 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
   private initThreeJS() {
     // Scene with dark background
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#0a0a12');
-    this.scene.fog = new THREE.Fog('#0a0a12', 100, 1000);
+    this.scene.background = new THREE.Color('#0B0E14');
+    this.scene.fog = new THREE.Fog('#0B0E14', 100, 1000);
 
     // Camera
     this.camera = new THREE.PerspectiveCamera(75, this.sizes.width / this.sizes.height, 0.1, 1000);
@@ -158,11 +200,11 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
     const colors = new Float32Array(particleCount * 3);
     const sizes = new Float32Array(particleCount);
     
-    // Enhanced color palette: Cyan -> Blue -> Purple
-    const color1 = new THREE.Color('#00d4ff'); // Bright Cyan
-    const color2 = new THREE.Color('#00a8ff'); // Medium Cyan-Blue
-    const color3 = new THREE.Color('#5f6fff'); // Primary Blue
-    const color4 = new THREE.Color('#a259ff'); // Accent Purple
+    // Brand palette: warm gold -> amber -> indigo
+    const color1 = new THREE.Color('#F2C98A'); // Light gold
+    const color2 = new THREE.Color('#E3A857'); // Gold
+    const color3 = new THREE.Color('#6C7BFF'); // Indigo
+    const color4 = new THREE.Color('#8B96FF'); // Soft indigo
     
     for (let i = 0; i < particleCount; i++) {
       const i3 = i * 3;
@@ -200,7 +242,7 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
       vertexColors: true,
       blending: THREE.AdditiveBlending,
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.55,
       depthWrite: false,
       sizeAttenuation: true,
       fog: false
@@ -246,7 +288,7 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
     const lineMaterial = new THREE.LineBasicMaterial({
       vertexColors: true,
       transparent: true,
-      opacity: 0.12, // Increased from 0.05 for better visibility
+      opacity: 0.08,
       blending: THREE.AdditiveBlending,
       depthWrite: false
     });
