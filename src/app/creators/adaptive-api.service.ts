@@ -28,9 +28,23 @@ export interface QuestionBankItem {
   p_value?: number | null;
   passage_id?: string | null;
   passage_text?: string | null;
+  passage_images?: string[] | null;
   question_sub_type?: string | null;
   tf_statement?: string | null;
   blanks?: string[];
+}
+
+export interface PassageBankItem {
+  _id?: string;
+  id?: string;
+  course_id?: string;
+  chapter_id?: string;
+  text: string;
+  title?: string | null;
+  source?: string | null;
+  difficulty?: number;
+  images?: string[];
+  active?: boolean;
 }
 
 export interface QuestionListResponse {
@@ -281,8 +295,22 @@ export class AdaptiveApiService {
     return this.api.post(`${this.qbBase(courseId)}/${questionId}/regenerate`, {});
   }
 
-  updatePassage(courseId: string, passageId: string, payload: { text: string; chapter_id: string; difficulty: number; title?: string }) {
-    return this.api.put(`/courses/${courseId}/passages/${passageId}`, payload);
+  updatePassage(courseId: string, passageId: string, payload: { text: string; chapter_id: string; difficulty: number; title?: string; images?: string[] }) {
+    return this.api.put(`/api/v2/courses/${courseId}/passages/${passageId}`, payload);
+  }
+
+  listPassages(courseId: string, chapterId?: string, page = 1, pageSize = 50): Observable<{ total: number; page: number; items: PassageBankItem[] }> {
+    const params: any = { page, page_size: pageSize };
+    if (chapterId) params.chapter_id = chapterId;
+    return this.api.get(`/api/v2/courses/${courseId}/passages`, params);
+  }
+
+  createPassage(courseId: string, payload: { text: string; chapter_id: string; difficulty?: number; title?: string; images?: string[] }) {
+    return this.api.post<{ id: string; message: string }>(`/api/v2/courses/${courseId}/passages`, payload);
+  }
+
+  deletePassage(courseId: string, passageId: string, unlinkQuestions = false): Observable<{ message: string; unlinked_questions: number }> {
+    return this.api.delete(`/api/v2/courses/${courseId}/passages/${passageId}`, { unlink_questions: unlinkQuestions });
   }
 
   listPendingReview(courseId: string, chapterId?: string, limit = 100): Observable<PendingReviewResponse> {

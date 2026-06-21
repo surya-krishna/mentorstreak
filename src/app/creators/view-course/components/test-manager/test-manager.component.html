@@ -1063,6 +1063,22 @@
                 </div>
             </div>
 
+            <!-- Passage Images -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Images</label>
+                <div *ngIf="editingPassage?.images?.length" class="flex flex-wrap gap-2 mb-2">
+                    <div *ngFor="let img of editingPassage.images; let i = index" class="relative">
+                        <img [src]="'/api/' + img" class="h-24 w-auto rounded border object-contain" />
+                        <button (click)="editingPassage.images.splice(i, 1)"
+                            class="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs leading-none">×</button>
+                    </div>
+                </div>
+                <button type="button" (click)="triggerPassageImageUpload()"
+                    class="px-3 py-1.5 rounded border border-gray-300 text-sm hover:bg-gray-50 text-gray-700">
+                    + Add Image
+                </button>
+            </div>
+
             <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
                 <button (click)="closePassageModal()"
                     class="px-4 py-2 rounded border text-gray-600 hover:bg-gray-50">

@@ -14,6 +14,7 @@ import { CreatorDashboardComponent } from './creators/creator-dashboard/creator-
 import { NewCourseComponent } from './creators/new-course/new-course.component';
 import { ViewCourseComponent } from './creators/view-course/view-course.component';
 import { MathSprintComponent } from './math-sprint/math-sprint.component';
+import { PyqComponent } from './pyq/pyq.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -36,4 +37,5 @@ export const routes: Routes = [
   { path: 'creator/courses/new', component: NewCourseComponent },
   { path: 'creator/courses/:id', component: ViewCourseComponent },
   { path: 'math', component: MathSprintComponent },
+  { path: 'past-papers', component: PyqComponent },
 ];

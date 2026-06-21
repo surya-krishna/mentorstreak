@@ -1,9 +1,10 @@
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { interval, Subscription } from 'rxjs';
-import { switchMap, takeWhile } from 'rxjs/operators';
-import { AdaptiveApiService, QuestionBankItem, QuestionStats, CsvImportResult, PendingReviewResponse, MockTestPatternSection, MockTestPattern, ExampleLibraryItem } from '../../../adaptive-api.service';
+import { interval, of, Subscription } from 'rxjs';
+import { map, switchMap, takeWhile } from 'rxjs/operators';
+import { AdaptiveApiService, QuestionBankItem, QuestionStats, CsvImportResult, PendingReviewResponse, MockTestPatternSection, MockTestPattern, ExampleLibraryItem, PassageBankItem } from '../../../adaptive-api.service';
+import { ApiService } from '../../../../api-service';
 import { ToastService } from '../../../../toast.service';
 import { ModalService } from '../../../../modal.service';
 import { LatexTextComponent } from '../../../../shared/components/latex-text/latex-text.component';
@@ -49,6 +50,15 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
   totalQuestions = 0;
   stats: QuestionStats | null = null;
   editingQuestion: QuestionBankItem | null = null;
+  // Link-passage UI state for the edit modal (questions without an existing passage_id)
+  linkPassage = false;
+  passageOptions: PassageBankItem[] = [];
+  passageOptionsLoading = false;
+  passageSearch = '';
+  showPassageOptions = false;
+  selectedPassage: PassageBankItem | null = null;
+  newPassageImages: string[] = [];
+  uploadingPassageImage = false;
   addingQuestion = false;
   newQuestion: QuestionBankItem = this.blankQuestion();
 
@@ -75,6 +85,7 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
   private pollSub?: Subscription;
   pending: PendingReviewResponse | null = null;
   passagePopup: { text: string; passageId?: string } | null = null;
+  passageImageZoom: string | null = null;
   selectedPending: Record<string, boolean> = {};
 
   // Example library
@@ -122,9 +133,16 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
 
   constructor(
     private adaptive: AdaptiveApiService,
+    private api: ApiService,
     private toast: ToastService,
     private modal: ModalService
   ) {}
+
+  getImageUrl(path: string | null | undefined): string {
+    if (!path) return '';
+    return `${this.api.getBaseUrl()}/master/v2/files?filePath=${encodeURIComponent(this.courseId + '/' + path)}`;
+    
+  }
 
   ngOnInit(): void {
     this.rebuildChapterList();
@@ -240,10 +258,157 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
     const copy = JSON.parse(JSON.stringify(q));
     if (!copy._id && copy.id) copy._id = copy.id;
     this.editingQuestion = copy;
+    this.linkPassage = !!copy.passage_id;
+    this.selectedPassage = null;
+    this.passageSearch = '';
+    this.showPassageOptions = false;
+    this.passageOptions = [];
+    this.newPassageImages = [];
   }
 
   cancelEdit(): void {
     this.editingQuestion = null;
+    this.linkPassage = false;
+    this.selectedPassage = null;
+    this.passageSearch = '';
+    this.showPassageOptions = false;
+    this.passageOptions = [];
+    this.newPassageImages = [];
+  }
+
+  // ---------- Passage images ----------
+  uploadLinkedPassageImage(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file || !this.editingQuestion) return;
+    this.uploadingPassageImage = true;
+    this.adaptive.uploadQuestionImage(this.courseId, file).subscribe({
+      next: (res) => {
+        this.editingQuestion!.passage_images = [...(this.editingQuestion!.passage_images || []), res.path];
+        this.uploadingPassageImage = false;
+        this.toast.success('Image uploaded');
+      },
+      error: () => {
+        this.uploadingPassageImage = false;
+        this.toast.error('Image upload failed');
+      },
+    });
+  }
+
+  removeLinkedPassageImage(index: number): void {
+    if (!this.editingQuestion?.passage_images) return;
+    this.editingQuestion.passage_images = this.editingQuestion.passage_images.filter((_, i) => i !== index);
+  }
+
+  uploadNewPassageImage(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    this.uploadingPassageImage = true;
+    this.adaptive.uploadQuestionImage(this.courseId, file).subscribe({
+      next: (res) => {
+        this.newPassageImages = [...this.newPassageImages, res.path];
+        this.uploadingPassageImage = false;
+        this.toast.success('Image uploaded');
+      },
+      error: () => {
+        this.uploadingPassageImage = false;
+        this.toast.error('Image upload failed');
+      },
+    });
+  }
+
+  removeNewPassageImage(index: number): void {
+    this.newPassageImages = this.newPassageImages.filter((_, i) => i !== index);
+  }
+
+  // ---------- Link passage (edit modal) ----------
+  onLinkPassageToggle(checked: boolean): void {
+    this.linkPassage = checked;
+    if (checked) this.loadPassageOptions();
+  }
+
+  loadPassageOptions(): void {
+    const chapterId = this.editingQuestion?.chapter_id;
+    if (!chapterId) return;
+    this.passageOptionsLoading = true;
+    this.adaptive.listPassages(this.courseId, chapterId, 1, 100).subscribe({
+      next: (res) => {
+        this.passageOptions = res.items || [];
+        this.passageOptionsLoading = false;
+      },
+      error: () => { this.passageOptionsLoading = false; },
+    });
+  }
+
+  get filteredPassageOptions(): PassageBankItem[] {
+    const term = this.passageSearch.trim().toLowerCase();
+    if (!term) return this.passageOptions;
+    return this.passageOptions.filter((p) =>
+      (p.title || '').toLowerCase().includes(term) || (p.text || '').toLowerCase().includes(term)
+    );
+  }
+
+  passageLabel(p: PassageBankItem): string {
+    const snippet = (p.text || '').slice(0, 80);
+    return p.title ? `${p.title} — ${snippet}` : snippet;
+  }
+
+  selectPassageOption(p: PassageBankItem): void {
+    this.selectedPassage = p;
+    this.passageSearch = this.passageLabel(p);
+    this.showPassageOptions = false;
+  }
+
+  onPassageSearchChange(value: string): void {
+    this.passageSearch = value;
+    this.selectedPassage = null;
+    this.showPassageOptions = true;
+  }
+
+  private resolvePassageLink() {
+    if (!this.linkPassage) return of(null as string | null);
+    if (this.selectedPassage) return of(this.qid(this.selectedPassage as any) || null);
+    const text = this.passageSearch.trim();
+    if (!text) return of(null as string | null);
+    // No existing passage matched — create a new one in the passage bank and link it
+    return this.adaptive.createPassage(this.courseId, {
+      text,
+      chapter_id: this.editingQuestion!.chapter_id!,
+      difficulty: this.editingQuestion!.difficulty ?? 3,
+      images: this.newPassageImages,
+    }).pipe(map((res) => res.id));
+  }
+
+  // Unlink the passage from the question being edited (persisted on save)
+  unlinkPassageFromQuestion(): void {
+    if (!this.editingQuestion?.passage_id) return;
+    this.editingQuestion.passage_id = null;
+    this.editingQuestion.passage_text = null;
+    this.editingQuestion.passage_images = [];
+    this.linkPassage = false;
+    this.toast.success('Passage unlinked — click Save to apply');
+  }
+
+  // Delete the passage from the bank and unlink it from every question that references it
+  deletePassageAndUnlinkAll(): void {
+    const passageId = this.editingQuestion?.passage_id;
+    if (!passageId) return;
+    this.modal.confirm('Delete this passage and unlink ALL questions that use it? The questions themselves are kept.').then((ok) => {
+      if (!ok) return;
+      this.adaptive.deletePassage(this.courseId, passageId, true).subscribe({
+        next: (res) => {
+          this.toast.success(`Passage deleted; ${res.unlinked_questions} question${res.unlinked_questions !== 1 ? 's' : ''} unlinked`);
+          if (this.editingQuestion) {
+            this.editingQuestion.passage_id = null;
+            this.editingQuestion.passage_text = null;
+            this.editingQuestion.passage_images = [];
+          }
+          this.linkPassage = false;
+          this.loadQuestions();
+          if (this.pending) this.loadPendingReview();
+        },
+        error: (err) => this.toast.error('Failed to delete passage: ' + (err?.message || '')),
+      });
+    });
   }
 
   showPassage(q: QuestionBankItem): void {
@@ -255,27 +420,87 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
     this.passagePopup = null;
   }
 
+  openImageZoom(url: string): void { this.passageImageZoom = url; }
+  closeImageZoom(): void { this.passageImageZoom = null; }
+
+  onEditChapterChange(chapterId: string): void {
+    if (!this.editingQuestion) return;
+    const chapter = this.chapters.find((c) => c.id === chapterId);
+    if (chapter) this.editingQuestion.book_id = chapter.book_id;
+    this.selectedPassage = null;
+    this.passageSearch = '';
+    if (this.linkPassage) this.loadPassageOptions();
+  }
+
+  onTopicTagsChange(value: string): void {
+    if (this.editingQuestion) {
+      this.editingQuestion.topic_tags = value.split(',').map(t => t.trim()).filter(Boolean);
+    }
+  }
+
+  markCorrect(index: number): void {
+    if (!this.editingQuestion?.options) return;
+    this.editingQuestion.options.forEach((o, i) => (o.isCorrect = i === index));
+    this.editingQuestion.correctAnswer = this.editingQuestion.options[index]?.text ?? '';
+  }
+
+  uploadEditQuestionImage(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file || !this.editingQuestion) return;
+    this.adaptive.uploadQuestionImage(this.courseId, file).subscribe({
+      next: (res) => {
+        this.editingQuestion!.image = res.path;
+        this.toast.success('Image uploaded');
+      },
+      error: () => this.toast.error('Image upload failed'),
+    });
+  }
+
   saveEdit(): void {
     if (!this.editingQuestion) return;
     const id = this.qid(this.editingQuestion);
     if (!id) return;
-    const { _id, id: _id2, ...patch } = this.editingQuestion as any;
-    this.adaptive.updateQuestion(this.courseId, id, patch).subscribe({
-      next: () => {
-        // Sync passage_bank doc so adaptive test assembly uses updated text
-        const eq = this.editingQuestion!;
-        if (eq.passage_id && eq.passage_text && eq.chapter_id) {
-          this.adaptive.updatePassage(this.courseId, eq.passage_id, {
-            text: eq.passage_text,
-            chapter_id: eq.chapter_id,
-            difficulty: eq.difficulty ?? 3,
-          }).subscribe({ error: () => {} }); // best-effort; question already saved
+    // Sync correctAnswer from whichever option is marked isCorrect
+    const correct = this.editingQuestion.options?.find((o) => o.isCorrect);
+    if (correct) this.editingQuestion.correctAnswer = correct.text;
+
+    const wasLinked = !!this.editingQuestion.passage_id;
+
+    this.resolvePassageLink().subscribe({
+      next: (passageId) => {
+        const { _id, id: _id2, ...patch } = this.editingQuestion as any;
+        if (wasLinked) {
+          // passage_text is canonical in passage_bank; don't write the denormalized copy back to question_bank
+          delete patch.passage_text;
+        } else if (this.linkPassage) {
+          patch.passage_id = passageId;
+          delete patch.passage_text;
+        } else {
+          patch.passage_id = null;
+          patch.passage_text = null;
         }
-        this.toast.success('Question updated');
-        this.editingQuestion = null;
-        this.loadQuestions();
+
+        this.adaptive.updateQuestion(this.courseId, id, patch).subscribe({
+          next: () => {
+            // Sync passage_bank doc so adaptive test assembly uses updated text
+            const eq = this.editingQuestion!;
+            if (wasLinked && eq.passage_id && eq.passage_text && eq.chapter_id) {
+              this.adaptive.updatePassage(this.courseId, eq.passage_id, {
+                text: eq.passage_text,
+                chapter_id: eq.chapter_id,
+                difficulty: eq.difficulty ?? 3,
+                images: eq.passage_images || [],
+              }).subscribe({ error: () => {} }); // best-effort; question already saved
+            }
+            this.toast.success('Question updated');
+            this.editingQuestion = null;
+            this.loadQuestions();
+            if (this.pending) this.loadPendingReview();
+          },
+          error: (err) => this.toast.error('Update failed: ' + (err?.message || '')),
+        });
       },
-      error: (err) => this.toast.error('Update failed: ' + (err?.message || '')),
+      error: (err) => this.toast.error('Failed to link passage: ' + (err?.message || '')),
     });
   }
 
@@ -470,6 +695,24 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
     this.aiRequest.use_example_library = false;
   }
 
+  addToExamples(q: QuestionBankItem): void {
+    const text = q.text?.trim();
+    if (!text) return;
+    this.exampleContentType = 'question';
+    this.newExampleText = text;
+    this.addingExample = true;
+  }
+
+  generateFromExamples(): void {
+    if (!this.aiRequest.chapter_ids.length) {
+      this.toast.error('Select at least one chapter in the generation settings above');
+      return;
+    }
+    this.exampleContentType = 'question';
+    this.aiRequest.use_example_library = true;
+    this.generate();
+  }
+
   reviewSingle(q: QuestionBankItem, action: 'approve' | 'reject'): void {
     const id = this.qid(q);
     if (!id) return;
@@ -492,6 +735,39 @@ export class QuestionBankManagerComponent implements OnInit, OnChanges, OnDestro
         this.loadPendingReview();
       },
       error: (err) => this.toast.error('Regenerate failed: ' + (err?.message || '')),
+    });
+  }
+
+  // Group a chapter's pending questions by passage so RC sets can be reviewed together
+  groupByPassage(questions: QuestionBankItem[]): { passage_id: string | null; passage_text?: string | null; passage_images?: string[] | null; questions: QuestionBankItem[] }[] {
+    const groups: { passage_id: string | null; passage_text?: string | null; passage_images?: string[] | null; questions: QuestionBankItem[] }[] = [];
+    const byPassage = new Map<string, { passage_id: string | null; passage_text?: string | null; passage_images?: string[] | null; questions: QuestionBankItem[] }>();
+    for (const q of questions) {
+      if (q.passage_id) {
+        let g = byPassage.get(q.passage_id);
+        if (!g) {
+          g = { passage_id: q.passage_id, passage_text: q.passage_text, passage_images: q.passage_images, questions: [] };
+          byPassage.set(q.passage_id, g);
+          groups.push(g);
+        }
+        g.questions.push(q);
+      } else {
+        groups.push({ passage_id: null, questions: [q] });
+      }
+    }
+    return groups;
+  }
+
+  reviewPassage(group: { passage_id: string | null; questions: QuestionBankItem[] }, action: 'approve' | 'reject'): void {
+    const ids = group.questions.map((q) => this.qid(q)).filter(Boolean);
+    if (!ids.length) return;
+    this.adaptive.bulkReviewQuestions(this.courseId, ids, action).subscribe({
+      next: () => {
+        this.toast.success(`${ids.length} question${ids.length !== 1 ? 's' : ''} ${action}d`);
+        this.loadPendingReview();
+        this.loadStats();
+      },
+      error: (err) => this.toast.error('Review failed: ' + (err?.message || '')),
     });
   }
 

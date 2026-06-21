@@ -7,8 +7,22 @@ module.exports = {
     extend: {
       fontFamily: {
         sans: ["'DM Sans'", "'Poppins'", "'Inter'", 'sans-serif'],
+        display: ["'Fraunces'", 'Georgia', 'serif'],
+        body: ["'Manrope'", "'DM Sans'", 'sans-serif'],
       },
       colors: {
+        ink: {
+          DEFAULT: '#0B0E14',
+          800: '#10141F',
+          700: '#161C2B',
+          600: '#1E2638',
+        },
+        gold: {
+          DEFAULT: '#E3A857',
+          light: '#F2C98A',
+          dark: '#B97F2E',
+        },
+        indigoX: '#6C7BFF',
         primary: '#5f6fff',
         accent: '#00ff99',
         cyan: '#00d4ff',

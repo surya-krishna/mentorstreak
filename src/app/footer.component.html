@@ -1,22 +1,38 @@
-<footer class="w-full bg-background/95 backdrop-blur-sm border-t border-cyan/20 py-8 mt-0">
-  <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 px-4">
-    <div class="flex flex-col md:flex-row items-center gap-4">
-      <a href="#home" class="text-white hover:text-primary transition">Home</a>
-      <a href="#features" class="text-white hover:text-primary transition">Features</a>
-      <a routerLink="/blog" class="text-white hover:text-primary transition">Blog</a>
-      <a routerLink="/about" class="text-white hover:text-primary transition">About Us</a>
-      <a routerLink="/contact" class="text-white hover:text-primary transition">Contact Us</a>
+<footer class="w-full bg-ink border-t border-white/5 pt-12 pb-8 mt-0">
+  <div class="max-w-7xl mx-auto px-4">
+    <div class="flex flex-col md:flex-row items-start justify-between gap-10 mb-10">
+      <div class="max-w-sm">
+        <span class="font-display text-2xl font-semibold text-white">Mentor<span class="text-gold">Streak</span></span>
+        <p class="font-body text-slate-light text-sm mt-3 leading-relaxed">AI-powered exam prep for Indian learners — structured courses, honest mocks, and a mentor that's awake whenever you are. Now live with our flagship CAT course.</p>
+      </div>
+      <div class="flex flex-wrap gap-x-10 gap-y-6">
+        <div class="flex flex-col gap-2">
+          <p class="font-body text-xs font-bold text-gold tracking-widest uppercase mb-1">Product</p>
+          <a href="#features" class="font-body text-sm text-slate-light hover:text-gold transition">Features</a>
+          <a href="#testimonials" class="font-body text-sm text-slate-light hover:text-gold transition">Testimonials</a>
+          <a routerLink="/blog" class="font-body text-sm text-slate-light hover:text-gold transition">Blog</a>
+        </div>
+        <div class="flex flex-col gap-2">
+          <p class="font-body text-xs font-bold text-gold tracking-widest uppercase mb-1">Company</p>
+          <a routerLink="/about" class="font-body text-sm text-slate-light hover:text-gold transition">About Us</a>
+          <a routerLink="/contact" class="font-body text-sm text-slate-light hover:text-gold transition">Contact Us</a>
+          <a routerLink="/creator/login" class="font-body text-sm text-slate-light hover:text-gold transition">For Creators</a>
+        </div>
+        <div class="flex flex-col gap-2">
+          <p class="font-body text-xs font-bold text-gold tracking-widest uppercase mb-1">Legal</p>
+          <a routerLink="/privacy-policy" class="font-body text-sm text-slate-light hover:text-gold transition">Privacy Policy</a>
+          <a routerLink="/terms-conditions" class="font-body text-sm text-slate-light hover:text-gold transition">Terms &amp; Conditions</a>
+          <a routerLink="/refund-policy" class="font-body text-sm text-slate-light hover:text-gold transition">Refund Policy</a>
+        </div>
+      </div>
     </div>
-    <div class="flex items-center gap-4">
-      <a href="#" aria-label="Twitter" class="hover:text-cyan transition"><i class="fab fa-twitter"></i></a>
-      <a href="#" aria-label="Instagram" class="hover:text-cyan transition"><i class="fab fa-instagram"></i></a>
-      <a href="#" aria-label="LinkedIn" class="hover:text-cyan transition"><i class="fab fa-linkedin"></i></a>
+    <div class="border-t border-white/5 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <p class="font-body text-slate-light/70 text-xs">© {{year}} MentorStreak. All rights reserved. Made in India 🇮🇳</p>
+      <div class="flex items-center gap-5 text-slate-light">
+        <a href="#" aria-label="Twitter" class="hover:text-gold transition"><i class="fab fa-twitter"></i></a>
+        <a href="#" aria-label="Instagram" class="hover:text-gold transition"><i class="fab fa-instagram"></i></a>
+        <a href="#" aria-label="LinkedIn" class="hover:text-gold transition"><i class="fab fa-linkedin"></i></a>
+      </div>
     </div>
-  </div>
-  <div class="text-center text-gray-400 text-xs mt-6">
-    © {{year}} MentorStreak. All rights reserved. &nbsp;|&nbsp;
-    <a routerLink="/privacy-policy" class="hover:text-primary">Privacy Policy</a> &nbsp;|&nbsp;
-    <a routerLink="/terms-conditions" class="hover:text-primary">Terms & Conditions</a> &nbsp;|&nbsp;
-    <a routerLink="/refund-policy" class="hover:text-primary">Refund Policy</a>
   </div>
 </footer>

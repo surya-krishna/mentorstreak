@@ -55,7 +55,8 @@ export function renderLatex(text: string): string {
     MATH_RE.lastIndex = 0;
     while ((match = MATH_RE.exec(text)) !== null) {
       if (match.index > lastIndex) {
-        parts.push(marked.parseInline(text.slice(lastIndex, match.index)) as string);
+        const segment = text.slice(lastIndex, match.index);
+        parts.push(segment.split('\n').map(line => marked.parseInline(line) as string).join('<br>'));
       }
 
       // Group 1 or 2 → display math; group 3 or 4 → inline math
@@ -77,7 +78,8 @@ export function renderLatex(text: string): string {
     }
 
     if (lastIndex < text.length) {
-      parts.push(marked.parseInline(text.slice(lastIndex)) as string);
+      const tail = text.slice(lastIndex);
+      parts.push(tail.split('\n').map(line => marked.parseInline(line) as string).join('<br>'));
     }
 
     return parts.join('');

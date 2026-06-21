@@ -179,36 +179,6 @@
       <button (click)="nextPage()" [disabled]="filters.page * filters.limit >= totalQuestions" class="text-sm text-indigo-600 disabled:text-gray-400">Next →</button>
     </div>
 
-    <!-- Edit drawer (inline) -->
-    <div *ngIf="editingQuestion" class="p-3 border rounded bg-indigo-50 space-y-2">
-      <div class="flex justify-between items-center">
-        <strong class="text-sm">Edit question</strong>
-        <button (click)="cancelEdit()" class="text-gray-500 text-sm">×</button>
-      </div>
-      <textarea [(ngModel)]="editingQuestion.text" class="w-full rounded border px-2 py-1.5 text-sm" rows="2"></textarea>
-      <div class="grid grid-cols-2 gap-2">
-        <input *ngFor="let o of editingQuestion.options; let i = index" [(ngModel)]="o.text" [placeholder]="'Option ' + (i + 1)" class="rounded border px-2 py-1.5 text-sm" />
-      </div>
-      <input [(ngModel)]="editingQuestion.correctAnswer" placeholder="Correct option text" class="w-full rounded border px-2 py-1.5 text-sm" />
-      <textarea [(ngModel)]="editingQuestion.explanation" class="w-full rounded border px-2 py-1.5 text-sm" rows="2"></textarea>
-      <div *ngIf="editingQuestion.type === 'Passage'" class="space-y-1">
-        <label class="text-xs text-gray-600 font-medium">Passage text</label>
-        <textarea [(ngModel)]="editingQuestion.passage_text" class="w-full rounded border px-2 py-1.5 text-sm" rows="6" placeholder="Passage text shown to students above this question"></textarea>
-      </div>
-      <div class="grid grid-cols-3 gap-2">
-        <select [(ngModel)]="editingQuestion.difficulty" class="rounded border px-2 py-1.5 text-sm">
-          <option *ngFor="let d of difficulties" [ngValue]="d">Difficulty {{ d }}</option>
-        </select>
-        <select [(ngModel)]="editingQuestion.bloom_level" class="rounded border px-2 py-1.5 text-sm">
-          <option *ngFor="let b of bloomLevels" [value]="b">{{ b }}</option>
-        </select>
-        <input [(ngModel)]="editingQuestion.estimated_time_seconds" type="number" class="rounded border px-2 py-1.5 text-sm" />
-      </div>
-      <div class="flex justify-end gap-2">
-        <button (click)="cancelEdit()" class="bg-gray-100 text-sm rounded px-3 py-1.5">Cancel</button>
-        <button (click)="saveEdit()" class="bg-indigo-600 text-white text-sm rounded px-3 py-1.5">Save</button>
-      </div>
-    </div>
   </section>
 
   <!-- ========== AI ========== -->
@@ -384,11 +354,22 @@
     </div>
 
     <div *ngIf="pending" class="space-y-2">
-      <div class="flex items-center justify-between">
+      <div class="flex items-center justify-between flex-wrap gap-2">
         <h4 class="font-semibold text-sm" title="AI-generated questions awaiting your review. Only approved questions are served to students.">Pending review ({{ pending.total_pending }}) ⓘ</h4>
-        <div *ngIf="selectedCount > 0" class="flex gap-2">
-          <button (click)="bulkReviewSelected('approve')" class="bg-emerald-600 text-white text-xs rounded px-3 py-1.5">Approve {{ selectedCount }}</button>
-          <button (click)="bulkReviewSelected('reject')" class="bg-rose-600 text-white text-xs rounded px-3 py-1.5">Reject {{ selectedCount }}</button>
+        <div class="flex items-center gap-2 flex-wrap">
+          <button
+            *ngIf="exampleLibraryTotal > 0"
+            (click)="generateFromExamples()"
+            [disabled]="generating"
+            class="text-xs bg-purple-600 text-white rounded px-3 py-1.5 disabled:opacity-50"
+            title="Generate new questions in the same style as your example library questions"
+          >
+            ✦ Generate from {{ exampleLibraryTotal }} example{{ exampleLibraryTotal !== 1 ? 's' : '' }}
+          </button>
+          <div *ngIf="selectedCount > 0" class="flex gap-2">
+            <button (click)="bulkReviewSelected('approve')" class="bg-emerald-600 text-white text-xs rounded px-3 py-1.5">Approve {{ selectedCount }}</button>
+            <button (click)="bulkReviewSelected('reject')" class="bg-rose-600 text-white text-xs rounded px-3 py-1.5">Reject {{ selectedCount }}</button>
+          </div>
         </div>
       </div>
 
@@ -408,27 +389,49 @@
             <button (click)="bulkReviewChapter(group.chapter_id, 'reject')" class="text-rose-700 text-xs border border-rose-300 rounded px-2 py-1">Reject all</button>
           </div>
         </div>
-        <div class="divide-y">
-          <div *ngFor="let q of group.questions" class="p-3 flex gap-3">
-            <input type="checkbox" [checked]="selectedPending[qid(q)]" (change)="toggleSelected(q)" class="mt-1" />
-            <div class="flex-1 space-y-1">
-              <div class="text-sm"><app-latex-text [text]="q.text" /></div>
-              <ul class="text-xs text-gray-600 space-y-0.5">
-                <li *ngFor="let o of q.options" [class.font-semibold]="o.isCorrect" [class.text-emerald-700]="o.isCorrect">
-                  {{ o.isCorrect ? '✓ ' : '   ' }}<app-latex-text [text]="o.text" />
-                </li>
-              </ul>
-              <div *ngIf="q.tf_statement && q.type === 'Paragraph Jumble'" class="text-xs bg-blue-50 border border-blue-200 rounded px-2 py-1"><strong>Sentence:</strong> <app-latex-text [text]="q.tf_statement" /></div>
-              <div *ngIf="q.passage_text && q.type === 'Paragraph Jumble'" class="text-xs bg-gray-50 border rounded px-2 py-1 whitespace-pre-wrap"><strong>Paragraph:</strong> <app-latex-text [text]="q.passage_text" [block]="true" /></div>
-              <div *ngIf="q.explanation" class="text-xs text-gray-500 prose prose-xs max-w-none"><app-latex-text [text]="q.explanation" [block]="true" /></div>
-              <button *ngIf="q.passage_text && q.type !== 'Paragraph Jumble'" (click)="showPassage(q)" class="text-xs text-blue-600 underline text-left">View Passage</button>
-              <div class="text-xs text-gray-500">Difficulty {{ q.difficulty }} · {{ q.bloom_level }} · {{ q.topic_tags?.join(', ') }}</div>
+        <div *ngFor="let pg of groupByPassage(group.questions)" class="border-t first:border-t-0">
+          <div *ngIf="pg.passage_id" class="p-3 bg-amber-50 border-b border-amber-200 space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <div class="font-semibold text-amber-800 text-xs">Passage ({{ pg.questions.length }} question{{ pg.questions.length !== 1 ? 's' : '' }})</div>
+              <div class="flex gap-2">
+                <button (click)="reviewPassage(pg, 'approve')" class="text-emerald-700 text-xs border border-emerald-300 rounded px-2 py-1">Approve passage</button>
+                <button (click)="reviewPassage(pg, 'reject')" class="text-rose-700 text-xs border border-rose-300 rounded px-2 py-1">Reject passage</button>
+              </div>
             </div>
-            <div class="flex flex-col gap-1 min-w-[90px]">
-              <button (click)="reviewSingle(q, 'approve')" class="bg-emerald-600 text-white text-xs rounded px-2 py-1" title="Approve: adds this question to the active pool — students can now be served it">Approve</button>
-              <button (click)="reviewSingle(q, 'reject')" class="bg-rose-600 text-white text-xs rounded px-2 py-1" title="Reject: removes from the active pool but keeps for audit. Students will never see it.">Reject</button>
-              <button (click)="regenerate(q)" class="bg-gray-200 text-xs rounded px-2 py-1" title="Ask AI to generate a replacement question for this chapter and difficulty level">Regenerate</button>
-              <button (click)="startEdit(q)" class="text-indigo-600 text-xs">Edit</button>
+            <div class="whitespace-pre-wrap text-gray-700 text-xs"><app-latex-text [text]="pg.passage_text ?? ''" [block]="true" /></div>
+            <div *ngIf="pg.passage_images?.length" class="flex flex-wrap gap-1 mt-1">
+              <img *ngFor="let img of pg.passage_images" [src]="getImageUrl(img)" class="h-24 rounded border object-contain cursor-pointer hover:opacity-80" (click)="openImageZoom(getImageUrl(img))" title="Click to enlarge" />
+            </div>
+          </div>
+          <div class="divide-y">
+            <div *ngFor="let q of pg.questions" class="p-3 flex gap-3">
+              <input type="checkbox" [checked]="selectedPending[qid(q)]" (change)="toggleSelected(q)" class="mt-1" />
+              <div class="flex-1 space-y-1">
+                <div class="text-sm"><app-latex-text [text]="q.text" /></div>
+                <ul class="text-xs text-gray-600 space-y-0.5">
+                  <li *ngFor="let o of q.options" [class.font-semibold]="o.isCorrect" [class.text-emerald-700]="o.isCorrect">
+                    {{ o.isCorrect ? '✓ ' : '   ' }}<app-latex-text [text]="o.text" />
+                  </li>
+                </ul>
+                <div *ngIf="q.tf_statement && q.type === 'Paragraph Jumble'" class="text-xs bg-blue-50 border border-blue-200 rounded px-2 py-1"><strong>Sentence:</strong> <app-latex-text [text]="q.tf_statement" /></div>
+                <div *ngIf="q.passage_text && q.type === 'Paragraph Jumble'" class="text-xs bg-gray-50 border rounded px-2 py-1 whitespace-pre-wrap"><strong>Paragraph:</strong> <app-latex-text [text]="q.passage_text" [block]="true" /></div>
+                <div *ngIf="q.explanation" class="text-xs text-gray-500 prose prose-xs max-w-none"><app-latex-text [text]="q.explanation" [block]="true" /></div>
+                <div *ngIf="!pg.passage_id && q.passage_text && q.type !== 'Paragraph Jumble'" class="text-xs bg-amber-50 border border-amber-200 rounded px-2 py-2 space-y-1">
+                  <div class="font-semibold text-amber-800">Passage</div>
+                  <div class="whitespace-pre-wrap text-gray-700"><app-latex-text [text]="q.passage_text" [block]="true" /></div>
+                  <div *ngIf="q.passage_images?.length" class="flex flex-wrap gap-1 mt-1">
+                    <img *ngFor="let img of q.passage_images" [src]="getImageUrl(img)" class="h-24 rounded border object-contain cursor-pointer hover:opacity-80" (click)="openImageZoom(getImageUrl(img))" title="Click to enlarge" />
+                  </div>
+                </div>
+                <div class="text-xs text-gray-500">Difficulty {{ q.difficulty }} · {{ q.bloom_level }} · {{ q.topic_tags?.join(', ') }}</div>
+              </div>
+              <div class="flex flex-col gap-1 min-w-[90px]">
+                <button (click)="reviewSingle(q, 'approve')" class="bg-emerald-600 text-white text-xs rounded px-2 py-1" title="Approve: adds this question to the active pool — students can now be served it">Approve</button>
+                <button (click)="reviewSingle(q, 'reject')" class="bg-rose-600 text-white text-xs rounded px-2 py-1" title="Reject: removes from the active pool but keeps for audit. Students will never see it.">Reject</button>
+                <button (click)="regenerate(q)" class="bg-gray-200 text-xs rounded px-2 py-1" title="Ask AI to generate a replacement question for this chapter and difficulty level">Regenerate</button>
+                <button (click)="addToExamples(q)" class="bg-purple-100 text-purple-700 text-xs rounded px-2 py-1 border border-purple-200" title="Save this question to the example library — AI will mirror its style when generating">+ Example</button>
+                <button (click)="startEdit(q)" class="text-indigo-600 text-xs">Edit</button>
+              </div>
             </div>
           </div>
         </div>
@@ -607,34 +610,55 @@
               <button (click)="bulkReviewChapter(group.chapter_id, 'reject')" class="text-rose-700 text-xs border border-rose-300 rounded px-2 py-1">Reject all</button>
             </div>
           </div>
-          <div class="divide-y">
-            <div *ngFor="let q of group.questions" class="p-3 flex gap-3">
-              <input type="checkbox" [checked]="selectedPending[qid(q)]" (change)="toggleSelected(q)" class="mt-1" />
-              <div class="flex-1 space-y-1">
-                <div class="text-sm"><app-latex-text [text]="q.text" /></div>
-                <ul class="text-xs text-gray-600 space-y-0.5">
-                  <li *ngFor="let o of q.options" [class.font-semibold]="o.isCorrect" [class.text-emerald-700]="o.isCorrect">
-                    {{ o.isCorrect ? '✓ ' : '   ' }}<app-latex-text [text]="o.text" />
-                  </li>
-                </ul>
-                <div *ngIf="q.tf_statement && q.type === 'Paragraph Jumble'" class="text-xs bg-blue-50 border border-blue-200 rounded px-2 py-1"><strong>Sentence:</strong> <app-latex-text [text]="q.tf_statement" /></div>
-                <div *ngIf="q.passage_text && q.type === 'Paragraph Jumble'" class="text-xs bg-gray-50 border rounded px-2 py-1 whitespace-pre-wrap"><strong>Paragraph:</strong> <app-latex-text [text]="q.passage_text" [block]="true" /></div>
-                <div *ngIf="q.explanation" class="text-xs text-gray-500 prose prose-xs max-w-none"><app-latex-text [text]="q.explanation" [block]="true" /></div>
-                <button *ngIf="q.passage_text && q.type !== 'Paragraph Jumble'" (click)="showPassage(q)" class="text-xs text-blue-600 underline text-left">View Passage</button>
-                <!-- Image upload -->
-                <div class="flex items-center gap-2 mt-1">
-                  <img *ngIf="q.image" [src]="q.image" class="h-16 rounded border object-contain" />
-                  <label class="cursor-pointer text-xs text-gray-500 border rounded px-2 py-1 hover:bg-gray-50">
-                    {{ q.image ? 'Change image' : '+ Add image' }}
-                    <input type="file" accept="image/*" class="hidden" (change)="uploadRawQuestionImage(q, $event)" />
-                  </label>
+          <div *ngFor="let pg of groupByPassage(group.questions)" class="border-t first:border-t-0">
+            <div *ngIf="pg.passage_id" class="p-3 bg-amber-50 border-b border-amber-200 space-y-2">
+              <div class="flex items-center justify-between gap-2">
+                <div class="font-semibold text-amber-800 text-xs">Passage ({{ pg.questions.length }} question{{ pg.questions.length !== 1 ? 's' : '' }})</div>
+                <div class="flex gap-2">
+                  <button (click)="reviewPassage(pg, 'approve')" class="text-emerald-700 text-xs border border-emerald-300 rounded px-2 py-1">Approve passage</button>
+                  <button (click)="reviewPassage(pg, 'reject')" class="text-rose-700 text-xs border border-rose-300 rounded px-2 py-1">Reject passage</button>
                 </div>
-                <div class="text-xs text-gray-500">Difficulty {{ q.difficulty }} · {{ q.bloom_level }} · {{ q.topic_tags?.join(', ') }}</div>
               </div>
-              <div class="flex flex-col gap-1 min-w-[90px]">
-                <button (click)="reviewSingle(q, 'approve')" class="bg-emerald-600 text-white text-xs rounded px-2 py-1" title="Approve: adds this question to the active pool">Approve</button>
-                <button (click)="reviewSingle(q, 'reject')" class="bg-rose-600 text-white text-xs rounded px-2 py-1" title="Reject: removes from active pool">Reject</button>
-                <button (click)="startEdit(q)" class="text-indigo-600 text-xs">Edit</button>
+              <div class="whitespace-pre-wrap text-gray-700 text-xs"><app-latex-text [text]="pg.passage_text ?? ''" [block]="true" /></div>
+              <div *ngIf="pg.passage_images?.length" class="flex flex-wrap gap-1 mt-1">
+                <img *ngFor="let img of pg.passage_images" [src]="getImageUrl(img)" class="h-24 rounded border object-contain cursor-pointer hover:opacity-80" (click)="openImageZoom(getImageUrl(img))" title="Click to enlarge" />
+              </div>
+            </div>
+            <div class="divide-y">
+              <div *ngFor="let q of pg.questions" class="p-3 flex gap-3">
+                <input type="checkbox" [checked]="selectedPending[qid(q)]" (change)="toggleSelected(q)" class="mt-1" />
+                <div class="flex-1 space-y-1">
+                  <div class="text-sm"><app-latex-text [text]="q.text" /></div>
+                  <ul class="text-xs text-gray-600 space-y-0.5">
+                    <li *ngFor="let o of q.options" [class.font-semibold]="o.isCorrect" [class.text-emerald-700]="o.isCorrect">
+                      {{ o.isCorrect ? '✓ ' : '   ' }}<app-latex-text [text]="o.text" />
+                    </li>
+                  </ul>
+                  <div *ngIf="q.tf_statement && q.type === 'Paragraph Jumble'" class="text-xs bg-blue-50 border border-blue-200 rounded px-2 py-1"><strong>Sentence:</strong> <app-latex-text [text]="q.tf_statement" /></div>
+                  <div *ngIf="q.passage_text && q.type === 'Paragraph Jumble'" class="text-xs bg-gray-50 border rounded px-2 py-1 whitespace-pre-wrap"><strong>Paragraph:</strong> <app-latex-text [text]="q.passage_text" [block]="true" /></div>
+                  <div *ngIf="q.explanation" class="text-xs text-gray-500 prose prose-xs max-w-none"><app-latex-text [text]="q.explanation" [block]="true" /></div>
+                  <div *ngIf="!pg.passage_id && q.passage_text && q.type !== 'Paragraph Jumble'" class="text-xs bg-amber-50 border border-amber-200 rounded px-2 py-2 space-y-1">
+                    <div class="font-semibold text-amber-800">Passage</div>
+                    <div class="whitespace-pre-wrap text-gray-700"><app-latex-text [text]="q.passage_text" [block]="true" /></div>
+                    <div *ngIf="q.passage_images?.length" class="flex flex-wrap gap-1 mt-1">
+                      <img *ngFor="let img of q.passage_images" [src]="getImageUrl(img)" class="h-24 rounded border object-contain cursor-pointer hover:opacity-80" (click)="openImageZoom(getImageUrl(img))" title="Click to enlarge" />
+                    </div>
+                  </div>
+                  <!-- Image upload -->
+                  <div class="flex items-center gap-2 mt-1">
+                    <img *ngIf="q.image" [src]="getImageUrl(q.image)" class="h-16 rounded border object-contain" />
+                    <label class="cursor-pointer text-xs text-gray-500 border rounded px-2 py-1 hover:bg-gray-50">
+                      {{ q.image ? 'Change image' : '+ Add image' }}
+                      <input type="file" accept="image/*" class="hidden" (change)="uploadRawQuestionImage(q, $event)" />
+                    </label>
+                  </div>
+                  <div class="text-xs text-gray-500">Difficulty {{ q.difficulty }} · {{ q.bloom_level }} · {{ q.topic_tags?.join(', ') }}</div>
+                </div>
+                <div class="flex flex-col gap-1 min-w-[90px]">
+                  <button (click)="reviewSingle(q, 'approve')" class="bg-emerald-600 text-white text-xs rounded px-2 py-1" title="Approve: adds this question to the active pool">Approve</button>
+                  <button (click)="reviewSingle(q, 'reject')" class="bg-rose-600 text-white text-xs rounded px-2 py-1" title="Reject: removes from active pool">Reject</button>
+                  <button (click)="startEdit(q)" class="text-indigo-600 text-xs">Edit</button>
+                </div>
               </div>
             </div>
           </div>
@@ -655,6 +679,197 @@
   <div class="flex justify-between pt-3 border-t">
     <button (click)="back.emit()" class="text-sm text-gray-600">← Back</button>
     <button (click)="continue.emit()" class="bg-indigo-600 text-white text-sm rounded px-4 py-2">Continue →</button>
+  </div>
+</div>
+
+<!-- Passage Image Zoom Lightbox -->
+<div *ngIf="passageImageZoom" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" (click)="closeImageZoom()">
+  <img [src]="passageImageZoom" class="max-w-full max-h-full rounded shadow-2xl object-contain" (click)="$event.stopPropagation()" />
+  <button class="absolute top-4 right-4 text-white text-3xl leading-none hover:text-gray-300" (click)="closeImageZoom()">×</button>
+</div>
+
+<!-- Edit Question Modal -->
+<div *ngIf="editingQuestion" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" (click)="cancelEdit()">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col" (click)="$event.stopPropagation()">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between px-5 py-4 border-b shrink-0">
+      <div>
+        <h3 class="font-semibold text-base">Edit Question</h3>
+        <p class="text-xs text-gray-500 mt-0.5">{{ chapterName(editingQuestion.chapter_id) }} · {{ editingQuestion.type }}</p>
+      </div>
+      <button (click)="cancelEdit()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
+    </div>
+
+    <!-- Scrollable body -->
+    <div class="overflow-y-auto flex-1 p-5 space-y-4">
+
+      <!-- Chapter -->
+      <div>
+        <label class="text-xs font-medium text-gray-700 block mb-1">Chapter</label>
+        <select [(ngModel)]="editingQuestion.chapter_id" (ngModelChange)="onEditChapterChange($event)" class="w-full rounded border px-2 py-1.5 text-sm">
+          <option value="">Select chapter…</option>
+          <option *ngFor="let c of chapters" [value]="c.id">{{ c.book_name }} · {{ c.name }}</option>
+        </select>
+      </div>
+
+      <!-- Question text -->
+      <div>
+        <label class="text-xs font-medium text-gray-700 block mb-1">Question text</label>
+        <textarea [(ngModel)]="editingQuestion.text" class="w-full rounded border px-3 py-2 text-sm" rows="3"></textarea>
+      </div>
+
+      <!-- Image -->
+      <div class="flex items-center gap-3">
+        <img *ngIf="editingQuestion.image" [src]="getImageUrl(editingQuestion.image)" class="h-20 rounded border object-contain" />
+        <label class="cursor-pointer text-xs text-gray-500 border rounded px-3 py-1.5 hover:bg-gray-50">
+          {{ editingQuestion.image ? 'Change image' : '+ Add image' }}
+          <input type="file" accept="image/*" class="hidden" (change)="uploadEditQuestionImage($event)" />
+        </label>
+        <button *ngIf="editingQuestion.image" (click)="editingQuestion.image = undefined" class="text-xs text-rose-500 hover:text-rose-700">Remove image</button>
+      </div>
+
+      <!-- Passage text (already linked to a passage_bank entry) -->
+      <div *ngIf="editingQuestion.passage_id" class="space-y-2">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-medium text-gray-700 block mb-1">Passage text</label>
+          <div class="flex items-center gap-3">
+            <button (click)="unlinkPassageFromQuestion()" class="text-xs text-amber-600 hover:text-amber-800" title="Remove the passage link from this question only">Unlink passage</button>
+            <button (click)="deletePassageAndUnlinkAll()" class="text-xs text-rose-600 hover:text-rose-800" title="Delete the passage and unlink every question that uses it">Delete passage &amp; unlink all questions</button>
+          </div>
+        </div>
+        <textarea [(ngModel)]="editingQuestion.passage_text" class="w-full rounded border px-3 py-2 text-sm" rows="6" placeholder="Passage shown to students above this question"></textarea>
+
+        <label class="text-xs font-medium text-gray-700 block mb-1">Passage images</label>
+        <div class="flex flex-wrap gap-2">
+          <div *ngFor="let img of editingQuestion.passage_images; let i = index" class="relative">
+            <img [src]="getImageUrl(img)" class="h-20 rounded border object-contain" />
+            <button (click)="removeLinkedPassageImage(i)" class="absolute -top-1.5 -right-1.5 bg-rose-600 text-white rounded-full w-5 h-5 text-xs leading-none">×</button>
+          </div>
+          <label class="cursor-pointer text-xs text-gray-500 border rounded px-3 py-1.5 hover:bg-gray-50 self-start">
+            {{ uploadingPassageImage ? 'Uploading…' : '+ Add image' }}
+            <input type="file" accept="image/*" class="hidden" [disabled]="uploadingPassageImage" (change)="uploadLinkedPassageImage($event)" />
+          </label>
+        </div>
+      </div>
+
+      <!-- Link passage (for questions not yet linked to a passage) -->
+      <div *ngIf="!editingQuestion.passage_id" class="space-y-2">
+        <label class="flex items-center gap-2 text-xs font-medium text-gray-700">
+          <input type="checkbox" [ngModel]="linkPassage" (ngModelChange)="onLinkPassageToggle($event)" class="rounded" />
+          Link this question to a passage
+        </label>
+        <div *ngIf="linkPassage" class="relative space-y-1">
+          <input
+            [ngModel]="passageSearch"
+            (ngModelChange)="onPassageSearchChange($event)"
+            (focus)="showPassageOptions = true"
+            placeholder="Search existing passages or type new passage text…"
+            class="w-full rounded border px-2 py-1.5 text-sm"
+          />
+          <div *ngIf="showPassageOptions" class="absolute z-10 w-full bg-white border rounded shadow-lg max-h-56 overflow-y-auto">
+            <div *ngIf="passageOptionsLoading" class="px-3 py-2 text-xs text-gray-400">Loading…</div>
+            <div
+              *ngFor="let p of filteredPassageOptions"
+              (click)="selectPassageOption(p)"
+              class="px-3 py-2 text-xs hover:bg-indigo-50 cursor-pointer border-b last:border-b-0"
+            >
+              {{ passageLabel(p) }}
+            </div>
+            <div *ngIf="!passageOptionsLoading && !filteredPassageOptions.length" class="px-3 py-2 text-xs text-gray-400">
+              No matching passages. The text above will be saved as a new passage.
+            </div>
+          </div>
+          <p *ngIf="selectedPassage" class="text-xs text-emerald-700">Linked to existing passage.</p>
+          <p *ngIf="!selectedPassage && passageSearch.trim()" class="text-xs text-amber-700">A new passage will be created with this text and linked.</p>
+
+          <div *ngIf="!selectedPassage" class="space-y-1">
+            <label class="text-xs font-medium text-gray-700 block">Passage images <span class="font-normal text-gray-400">(for the new passage)</span></label>
+            <div class="flex flex-wrap gap-2">
+              <div *ngFor="let img of newPassageImages; let i = index" class="relative">
+                <img [src]="getImageUrl(img)" class="h-20 rounded border object-contain" />
+                <button (click)="removeNewPassageImage(i)" class="absolute -top-1.5 -right-1.5 bg-rose-600 text-white rounded-full w-5 h-5 text-xs leading-none">×</button>
+              </div>
+              <label class="cursor-pointer text-xs text-gray-500 border rounded px-3 py-1.5 hover:bg-gray-50 self-start">
+                {{ uploadingPassageImage ? 'Uploading…' : '+ Add image' }}
+                <input type="file" accept="image/*" class="hidden" [disabled]="uploadingPassageImage" (change)="uploadNewPassageImage($event)" />
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Options with radio to mark correct -->
+      <div *ngIf="editingQuestion.options?.length">
+        <label class="text-xs font-medium text-gray-700 block mb-1">
+          Options <span class="font-normal text-gray-400">(select radio to mark correct answer)</span>
+        </label>
+        <div class="space-y-2">
+          <div *ngFor="let o of editingQuestion.options; let i = index" class="flex items-center gap-2">
+            <input
+              type="radio"
+              name="editCorrect"
+              [checked]="o.isCorrect"
+              (change)="markCorrect(i)"
+              class="flex-shrink-0 accent-emerald-600"
+            />
+            <input
+              [(ngModel)]="o.text"
+              [placeholder]="'Option ' + (i + 1)"
+              class="flex-1 rounded border px-2 py-1.5 text-sm"
+              [class.border-emerald-400]="o.isCorrect"
+              [class.bg-emerald-50]="o.isCorrect"
+            />
+            <span *ngIf="o.isCorrect" class="text-emerald-600 text-xs font-medium shrink-0">✓ correct</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Explanation -->
+      <div>
+        <label class="text-xs font-medium text-gray-700 block mb-1">Explanation</label>
+        <textarea [(ngModel)]="editingQuestion.explanation" class="w-full rounded border px-3 py-2 text-sm" rows="3" placeholder="Explain why the correct answer is right"></textarea>
+      </div>
+
+      <!-- Metadata row -->
+      <div class="grid grid-cols-3 gap-3">
+        <div>
+          <label class="text-xs font-medium text-gray-700 block mb-1">Difficulty</label>
+          <select [(ngModel)]="editingQuestion.difficulty" class="w-full rounded border px-2 py-1.5 text-sm">
+            <option *ngFor="let d of difficulties" [ngValue]="d">Level {{ d }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs font-medium text-gray-700 block mb-1">Bloom level</label>
+          <select [(ngModel)]="editingQuestion.bloom_level" class="w-full rounded border px-2 py-1.5 text-sm">
+            <option *ngFor="let b of bloomLevels" [value]="b">{{ b }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs font-medium text-gray-700 block mb-1">Est. seconds</label>
+          <input [(ngModel)]="editingQuestion.estimated_time_seconds" type="number" class="w-full rounded border px-2 py-1.5 text-sm" />
+        </div>
+      </div>
+
+      <!-- Topic tags -->
+      <div>
+        <label class="text-xs font-medium text-gray-700 block mb-1">Topic tags <span class="font-normal text-gray-400">(comma separated)</span></label>
+        <input
+          [ngModel]="editingQuestion.topic_tags?.join(', ')"
+          (ngModelChange)="onTopicTagsChange($event)"
+          class="w-full rounded border px-2 py-1.5 text-sm"
+          placeholder="e.g. photosynthesis, chloroplast"
+        />
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="flex justify-end gap-2 px-5 py-4 border-t bg-gray-50 shrink-0">
+      <button (click)="cancelEdit()" class="bg-white border text-sm rounded-lg px-4 py-2 text-gray-700 hover:bg-gray-50">Cancel</button>
+      <button (click)="saveEdit()" class="bg-indigo-600 text-white text-sm rounded-lg px-4 py-2 hover:bg-indigo-700">Save changes</button>
+    </div>
+
   </div>
 </div>
 
