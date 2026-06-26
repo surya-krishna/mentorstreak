@@ -239,6 +239,12 @@ export class TestManagerComponent implements OnInit, OnChanges {
                     if (!s.selectedChapters) s.selectedChapters = [];
                     if (!s.questions) s.questions = [];
                     if (!s.passages) s.passages = [];
+                    s.passages = s.passages.map((p: any) => ({
+                        passageId: p.passageId || p._id || p.id,
+                        content: p.content || p.text || '',
+                        sourceAttribution: p.sourceAttribution || p.source || '',
+                        images: p.images || [],
+                    }));
                     if (!s.subsections) s.subsections = [];
                     if (s.usePerTypeMarking === undefined) s.usePerTypeMarking = false;
                     if (!s.marksNegByType) s.marksNegByType = {};
